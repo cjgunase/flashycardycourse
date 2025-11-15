@@ -1,0 +1,283 @@
+---
+alwaysApply: true
+---
+# Clerk Authentication & Authorization Rules
+
+This project uses **Clerk** for all authentication and authorization. Security is paramount: **users must only access their own data**.
+
+## Core Principles
+
+1. **Never trust client-side data** - Always verify user identity server-side
+2. **Always validate ownership** - Check that `clerkUserId` matches the authenticated user
+3. **Fail securely** - Deny access if user identity cannot be verified
+4. **No data leakage** - Never expose data belonging to other users
+
+## Authentication Setup
+
+Clerk middleware is configured in [middleware.ts](mdc:src/middleware.ts) and protects all routes by default except static assets and Next.js internals.
+
+```typescript
+import { clerkMiddleware } from "@clerk/nextjs/server";
+export default clerkMiddleware();
+```
+
+## Getting the Current User
+
+Always use Clerk's server-side helpers to get the authenticated user:
+
+### In Server Components & Route Handlers
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export default async function MyComponent() {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    // User is not authenticated
+    return redirect("/sign-in");
+  }
+  
+  // Use userId to fetch user's data
+}
+```
+
+### In API Routes
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export async function GET(request: Request) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  
+  // Proceed with authenticated user
+}
+```
+
+## Data Authorization Rules
+
+### 1. Reading Data
+
+**ALWAYS** filter queries by the authenticated user's ID:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+// ✅ CORRECT - Filter by userId
+const { userId } = await auth();
+const userDecks = await db
+  .select()
+  .from(decksTable)
+  .where(eq(decksTable.clerkUserId, userId));
+
+// ❌ WRONG - Returns all users' data
+const allDecks = await db.select().from(decksTable);
+```
+
+### 2. Creating Data
+
+**ALWAYS** set `clerkUserId` to the authenticated user when inserting:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+
+// ✅ CORRECT - Use authenticated userId
+const { userId } = await auth();
+await db.insert(decksTable).values({
+  clerkUserId: userId!,
+  title: "My Deck",
+  description: "Description"
+});
+
+// ❌ WRONG - Never accept clerkUserId from client
+await db.insert(decksTable).values({
+  clerkUserId: requestBody.userId, // Client could fake this!
+  title: requestBody.title
+});
+```
+
+### 3. Updating Data
+
+**ALWAYS** verify ownership before updating:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+
+// ✅ CORRECT - Verify ownership in WHERE clause
+const { userId } = await auth();
+const result = await db
+  .update(decksTable)
+  .set({ title: "New Title", updatedAt: new Date() })
+  .where(
+    and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.clerkUserId, userId!) // Ownership check
+    )
+  );
+
+if (result.rowCount === 0) {
+  // Either deck doesn't exist or user doesn't own it
+  return Response.json({ error: "Forbidden" }, { status: 403 });
+}
+
+// ❌ WRONG - Updates any deck by ID
+await db
+  .update(decksTable)
+  .set({ title: "New Title" })
+  .where(eq(decksTable.id, deckId)); // Missing ownership check!
+```
+
+### 4. Deleting Data
+
+**ALWAYS** verify ownership before deleting:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+
+// ✅ CORRECT - Verify ownership before delete
+const { userId } = await auth();
+const result = await db
+  .delete(decksTable)
+  .where(
+    and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.clerkUserId, userId!) // Ownership check
+    )
+  );
+
+if (result.rowCount === 0) {
+  return Response.json({ error: "Forbidden" }, { status: 403 });
+}
+```
+
+### 5. Accessing Related Data (Cards via Decks)
+
+Since [schema.ts](mdc:src/db/schema.ts) defines a cascade delete relationship where cards belong to decks, **verify deck ownership** to control card access:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { cardsTable, decksTable } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+
+// ✅ CORRECT - Verify user owns the deck first
+const { userId } = await auth();
+
+// First, verify deck ownership
+const deck = await db.query.decksTable.findFirst({
+  where: and(
+    eq(decksTable.id, deckId),
+    eq(decksTable.clerkUserId, userId!)
+  )
+});
+
+if (!deck) {
+  return Response.json({ error: "Forbidden" }, { status: 403 });
+}
+
+// Now safe to query cards
+const cards = await db
+  .select()
+  .from(cardsTable)
+  .where(eq(cardsTable.deckId, deckId));
+
+// ❌ WRONG - Directly access cards without deck ownership check
+const cards = await db
+  .select()
+  .from(cardsTable)
+  .where(eq(cardsTable.deckId, deckId));
+```
+
+## Security Checklist
+
+Before deploying any database operation, verify:
+
+- [ ] User authentication is checked with `await auth()`
+- [ ] `userId` is validated (not null/undefined)
+- [ ] Database queries filter by `clerkUserId`
+- [ ] Update/Delete operations verify ownership with `and()` conditions
+- [ ] Never accept `userId`/`clerkUserId` from client input
+- [ ] Proper HTTP status codes (401 Unauthorized, 403 Forbidden)
+- [ ] Error messages don't leak information about other users' data
+
+## Common Vulnerabilities to Avoid
+
+### 🚨 Insecure Direct Object Reference (IDOR)
+
+```typescript
+// ❌ VULNERABLE - User can access any deck by changing ID in URL
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const deck = await db.query.decksTable.findFirst({
+    where: eq(decksTable.id, parseInt(params.id))
+  });
+  return Response.json(deck);
+}
+
+// ✅ SECURE - Verify ownership
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const { userId } = await auth();
+  const deck = await db.query.decksTable.findFirst({
+    where: and(
+      eq(decksTable.id, parseInt(params.id)),
+      eq(decksTable.clerkUserId, userId!)
+    )
+  });
+  
+  if (!deck) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+  
+  return Response.json(deck);
+}
+```
+
+### 🚨 Mass Assignment
+
+```typescript
+// ❌ VULNERABLE - Client could inject clerkUserId
+export async function POST(request: Request) {
+  const body = await request.json();
+  await db.insert(decksTable).values(body); // Dangerous!
+}
+
+// ✅ SECURE - Explicitly set clerkUserId
+export async function POST(request: Request) {
+  const { userId } = await auth();
+  const { title, description } = await request.json();
+  
+  await db.insert(decksTable).values({
+    clerkUserId: userId!,
+    title,
+    description
+  });
+}
+```
+
+## Testing Authorization
+
+When testing, always verify:
+
+1. User A cannot read User B's data
+2. User A cannot update User B's data
+3. User A cannot delete User B's data
+4. Unauthenticated requests are rejected
+5. Invalid/expired tokens are rejected
+
+## Summary
+
+**Golden Rule**: Every database operation involving user data must include the authenticated user's `clerkUserId` in the WHERE clause or as a value being inserted. Never trust client-provided user identifiers.

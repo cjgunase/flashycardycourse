@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+# shadcn UI Configuration
+
+This project uses **shadcn UI** for all UI elements and components.
+
+## Initialization
+
+If shadcn UI is not initialized in the project, use:
+
+```bash
+npx shadcn@latest init
+```
+
+## Adding Components
+
+To add a specific shadcn UI component that is not yet installed, use:
+
+```bash
+npx shadcn@latest add <component-name>
+```
+
+### Examples:
+- Button: `npx shadcn@latest add button`
+- Card: `npx shadcn@latest add card`
+- Dialog: `npx shadcn@latest add dialog`
+- Input: `npx shadcn@latest add input`
+
+## Important Notes
+
+- Always use shadcn UI components for UI elements instead of building custom components from scratch
+- Check if a component is already installed before attempting to add it
+- shadcn UI components are located in the `src/components/ui` directory (after installation)
+- The configuration file is [components.json](mdc:components.json)

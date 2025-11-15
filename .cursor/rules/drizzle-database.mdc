@@ -1,0 +1,85 @@
+---
+alwaysApply: true
+description: Guidelines for database interactions using Drizzle ORM
+---
+
+# Drizzle ORM Database Rules
+
+All database interactions in this project must use Drizzle ORM with the schema defined in [schema.ts](mdc:src/db/schema.ts).
+
+## Schema Reference
+
+The project uses PostgreSQL with the following tables:
+
+### Tables
+- **decksTable**: User flashcard decks with `clerkUserId`, `title`, `description`, timestamps
+- **cardsTable**: Individual flashcards with spaced repetition fields (`easeFactor`, `reviewCount`, `lastReviewedAt`, `nextDueAt`)
+
+### Relations
+- Decks have many cards (one-to-many)
+- Cards belong to one deck (many-to-one)
+- Cascade delete enabled (deleting a deck removes its cards)
+
+## Required Practices
+
+1. **Always import from schema**: Import tables and relations from [schema.ts](mdc:src/db/schema.ts)
+   ```typescript
+   import { decksTable, cardsTable, decksRelations, cardsRelations } from "@/db/schema";
+   ```
+
+2. **Use Drizzle query syntax**: Never write raw SQL. Use Drizzle's query builder
+   ```typescript
+   import { db } from "@/db";
+   import { eq, desc, and } from "drizzle-orm";
+   
+   // Query examples
+   await db.select().from(decksTable).where(eq(decksTable.clerkUserId, userId));
+   await db.insert(cardsTable).values({ deckId, question, answer });
+   await db.update(cardsTable).set({ easeFactor }).where(eq(cardsTable.id, cardId));
+   await db.delete(decksTable).where(eq(decksTable.id, deckId));
+   ```
+
+3. **Use relations for joins**: Leverage the defined relations for querying related data
+   ```typescript
+   await db.query.decksTable.findMany({
+     where: eq(decksTable.clerkUserId, userId),
+     with: { cards: true }
+   });
+   ```
+
+4. **Respect spaced repetition fields**: When updating card review data, always update:
+   - `lastReviewedAt`: Current timestamp
+   - `nextDueAt`: Calculated next review date
+   - `easeFactor`: Adjusted based on performance (SM-2 algorithm)
+   - `reviewCount`: Increment on each review
+
+5. **Use TypeScript types**: Infer types from schema
+   ```typescript
+   import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
+   
+   type Deck = InferSelectModel<typeof decksTable>;
+   type NewDeck = InferInsertModel<typeof decksTable>;
+   ```
+
+6. **Handle timestamps properly**: Use `defaultNow()` for creation, update `updatedAt` manually when needed
+   ```typescript
+   await db.update(decksTable).set({ 
+     title: newTitle,
+     updatedAt: new Date()
+   });
+   ```
+
+7. **Leverage cascade deletes**: Deleting a deck automatically removes all associated cards
+
+## Database Client
+
+Always use the configured database client from `@/db` - never create new connections or pools.
+
+## Sample Data
+
+Sample decks and cards are provided in [schema.ts](mdc:src/db/schema.ts) for medical students, covering:
+- Acute Medicine
+- Cardiology  
+- Clinical Skills
+
+Use these as reference for data structure and content format.

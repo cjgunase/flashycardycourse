@@ -34,8 +34,8 @@ export default async function MyComponent() {
   const { userId } = await auth();
   
   if (!userId) {
-    // User is not authenticated
-    return redirect("/sign-in");
+    // User is not authenticated - redirect to homepage where sign in/sign up buttons are
+    return redirect("/");
   }
   
   // Use userId to fetch user's data

@@ -7,33 +7,136 @@ This project follows strict server-side data patterns for security and type safe
 
 ## Core Principles
 
-1. **Server Components for Data Retrieval**: All database queries and data fetching must be done in React Server Components
-2. **Server Actions for Mutations**: All database inserts, updates, and deletes must be done via Server Actions
-3. **Zod Validation**: All data validation must use Zod schemas
-4. **TypeScript Types**: All Server Action inputs must be validated by Zod and have explicit TypeScript types (never use `formData` as a type)
+1. **Database Query Functions**: All database operations must go through helper functions in the `db/queries` directory
+2. **Server Components for Data Retrieval**: Server Components call query functions for data fetching
+3. **Server Actions for Mutations**: Server Actions call mutation functions (also in `db/queries`)
+4. **Zod Validation**: All data validation must use Zod schemas
+5. **TypeScript Types**: All function inputs must be validated by Zod and have explicit TypeScript types (never use `formData` as a type)
+6. **Never Direct Database Access**: Components and actions must never import or use `db` directly - always use query functions
+
+## Query Functions Architecture
+
+### Directory Structure
+
+```
+src/
+  db/
+    queries/
+      decks.ts          # Deck-related queries and mutations
+      cards.ts          # Card-related queries and mutations
+      reviews.ts        # Review/spaced-repetition queries
+    index.ts
+    schema.ts
+```
+
+### Query Function Pattern
+
+All database operations must be encapsulated in functions within `db/queries`:
+
+```typescript
+// db/queries/decks.ts
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import type { InferSelectModel } from "drizzle-orm";
+
+export type Deck = InferSelectModel<typeof decksTable>;
+
+// Query function for reading data
+export async function getUserDecks(userId: string): Promise<Deck[]> {
+  return await db
+    .select()
+    .from(decksTable)
+    .where(eq(decksTable.clerkUserId, userId))
+    .orderBy(desc(decksTable.updatedAt));
+}
+
+export async function getDeckById(deckId: number, userId: string): Promise<Deck | undefined> {
+  return await db.query.decksTable.findFirst({
+    where: and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.clerkUserId, userId)
+    ),
+    with: { cards: true }
+  });
+}
+
+// Mutation function for creating data
+export async function createDeck(data: {
+  userId: string;
+  title: string;
+  description?: string;
+}): Promise<Deck> {
+  const [newDeck] = await db
+    .insert(decksTable)
+    .values({
+      clerkUserId: data.userId,
+      title: data.title,
+      description: data.description,
+    })
+    .returning();
+  
+  return newDeck;
+}
+
+// Mutation function for updating data
+export async function updateDeck(data: {
+  deckId: number;
+  userId: string;
+  title: string;
+  description?: string;
+}): Promise<Deck | null> {
+  const [updatedDeck] = await db
+    .update(decksTable)
+    .set({
+      title: data.title,
+      description: data.description,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(decksTable.id, data.deckId),
+        eq(decksTable.clerkUserId, data.userId)
+      )
+    )
+    .returning();
+  
+  return updatedDeck || null;
+}
+
+// Mutation function for deleting data
+export async function deleteDeck(deckId: number, userId: string): Promise<boolean> {
+  const result = await db
+    .delete(decksTable)
+    .where(
+      and(
+        eq(decksTable.id, deckId),
+        eq(decksTable.clerkUserId, userId)
+      )
+    );
+  
+  return result.rowCount > 0;
+}
+```
 
 ## Data Retrieval Pattern
 
-### ✅ CORRECT - Server Component with Direct Database Access
+### ✅ CORRECT - Server Component with Query Functions
 
 ```typescript
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/db";
-import { decksTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { getUserDecks } from "@/db/queries/decks";
 
 export default async function DecksPage() {
   const { userId } = await auth();
   
   if (!userId) {
-    redirect("/sign-in");
+    redirect("/");
   }
   
-  // Direct database query in Server Component
-  const decks = await db
-    .select()
-    .from(decksTable)
-    .where(eq(decksTable.clerkUserId, userId));
+  // Use query function - never access db directly
+  const decks = await getUserDecks(userId);
   
   return (
     <div>
@@ -42,6 +145,27 @@ export default async function DecksPage() {
       ))}
     </div>
   );
+}
+```
+
+### ❌ WRONG - Direct Database Access in Component
+
+```typescript
+// DON'T DO THIS - Never import db directly in components/actions
+import { db } from "@/db";
+import { decksTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+export default async function DecksPage() {
+  const { userId } = await auth();
+  
+  // ❌ Direct database access - violates architecture
+  const decks = await db
+    .select()
+    .from(decksTable)
+    .where(eq(decksTable.clerkUserId, userId));
+  
+  return <div>...</div>;
 }
 ```
 
@@ -72,6 +196,7 @@ export default function DecksPage() {
 Create validation schemas for all Server Action inputs:
 
 ```typescript
+// app/dashboard/schemas.ts
 import { z } from "zod";
 
 export const createDeckSchema = z.object({
@@ -95,18 +220,17 @@ export type UpdateCardInput = z.infer<typeof updateCardSchema>;
 export type DeleteItemInput = z.infer<typeof deleteItemSchema>;
 ```
 
-### Step 2: Create Server Action with Validation
+### Step 2: Create Server Action that Uses Query Functions
 
 ```typescript
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/db";
-import { decksTable } from "@/db/schema";
 import { revalidatePath } from "next/cache";
+import { createDeck as createDeckQuery } from "@/db/queries/decks";
 import { createDeckSchema, type CreateDeckInput } from "./schemas";
 
-export async function createDeck(input: CreateDeckInput) {
+export async function createDeckAction(input: CreateDeckInput) {
   // 1. Validate input with Zod
   const validatedInput = createDeckSchema.parse(input);
   
@@ -116,15 +240,12 @@ export async function createDeck(input: CreateDeckInput) {
     throw new Error("Unauthorized");
   }
   
-  // 3. Perform database operation
-  const [newDeck] = await db
-    .insert(decksTable)
-    .values({
-      clerkUserId: userId,
-      title: validatedInput.title,
-      description: validatedInput.description,
-    })
-    .returning();
+  // 3. Call query function - NEVER access db directly
+  const newDeck = await createDeckQuery({
+    userId,
+    title: validatedInput.title,
+    description: validatedInput.description,
+  });
   
   // 4. Revalidate affected paths
   revalidatePath("/dashboard");
@@ -139,7 +260,7 @@ export async function createDeck(input: CreateDeckInput) {
 "use client";
 
 import { useState } from "react";
-import { createDeck } from "./actions";
+import { createDeckAction } from "./actions";
 import type { CreateDeckInput } from "./schemas";
 
 export function CreateDeckForm() {
@@ -158,7 +279,7 @@ export function CreateDeckForm() {
     };
     
     try {
-      await createDeck(input);
+      await createDeckAction(input);
       e.currentTarget.reset();
     } catch (error) {
       console.error("Failed to create deck:", error);
@@ -185,11 +306,10 @@ export function CreateDeckForm() {
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/db";
-import { decksTable, cardsTable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { updateDeck as updateDeckQuery } from "@/db/queries/decks";
+import { deleteCard as deleteCardQuery, getDeckById } from "@/db/queries/cards";
 
 // Schemas
 const updateDeckSchema = z.object({
@@ -208,7 +328,7 @@ type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
 type DeleteCardInput = z.infer<typeof deleteCardSchema>;
 
 // Actions
-export async function updateDeck(input: UpdateDeckInput) {
+export async function updateDeckAction(input: UpdateDeckInput) {
   const validated = updateDeckSchema.parse(input);
   const { userId } = await auth();
   
@@ -216,32 +336,25 @@ export async function updateDeck(input: UpdateDeckInput) {
     throw new Error("Unauthorized");
   }
   
-  const result = await db
-    .update(decksTable)
-    .set({
-      title: validated.title,
-      description: validated.description,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(decksTable.id, validated.deckId),
-        eq(decksTable.clerkUserId, userId)
-      )
-    )
-    .returning();
+  // Use query function - never access db directly
+  const updatedDeck = await updateDeckQuery({
+    deckId: validated.deckId,
+    userId,
+    title: validated.title,
+    description: validated.description,
+  });
   
-  if (result.length === 0) {
+  if (!updatedDeck) {
     throw new Error("Deck not found or access denied");
   }
   
   revalidatePath("/dashboard");
   revalidatePath(`/decks/${validated.deckId}`);
   
-  return { success: true, deck: result[0] };
+  return { success: true, deck: updatedDeck };
 }
 
-export async function deleteCard(input: DeleteCardInput) {
+export async function deleteCardAction(input: DeleteCardInput) {
   const validated = deleteCardSchema.parse(input);
   const { userId } = await auth();
   
@@ -249,31 +362,64 @@ export async function deleteCard(input: DeleteCardInput) {
     throw new Error("Unauthorized");
   }
   
-  // Verify deck ownership first
-  const deck = await db.query.decksTable.findFirst({
-    where: and(
-      eq(decksTable.id, validated.deckId),
-      eq(decksTable.clerkUserId, userId)
-    ),
-  });
+  // Use query function to verify deck ownership
+  const deck = await getDeckById(validated.deckId, userId);
   
   if (!deck) {
     throw new Error("Deck not found or access denied");
   }
   
-  // Now safe to delete card
-  await db
-    .delete(cardsTable)
-    .where(
-      and(
-        eq(cardsTable.id, validated.cardId),
-        eq(cardsTable.deckId, validated.deckId)
-      )
-    );
+  // Use query function to delete card
+  const success = await deleteCardQuery(validated.cardId, validated.deckId);
+  
+  if (!success) {
+    throw new Error("Card not found");
+  }
   
   revalidatePath(`/decks/${validated.deckId}`);
   
   return { success: true };
+}
+```
+
+## Query Functions for Cards Example
+
+```typescript
+// db/queries/cards.ts
+import { db } from "@/db";
+import { cardsTable, decksTable } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import type { InferSelectModel } from "drizzle-orm";
+
+export type Card = InferSelectModel<typeof cardsTable>;
+
+export async function getCardsByDeckId(deckId: number): Promise<Card[]> {
+  return await db
+    .select()
+    .from(cardsTable)
+    .where(eq(cardsTable.deckId, deckId));
+}
+
+export async function getDeckById(deckId: number, userId: string) {
+  return await db.query.decksTable.findFirst({
+    where: and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.clerkUserId, userId)
+    ),
+  });
+}
+
+export async function deleteCard(cardId: number, deckId: number): Promise<boolean> {
+  const result = await db
+    .delete(cardsTable)
+    .where(
+      and(
+        eq(cardsTable.id, cardId),
+        eq(cardsTable.deckId, deckId)
+      )
+    );
+  
+  return result.rowCount > 0;
 }
 ```
 
@@ -303,28 +449,80 @@ export async function createDeck(input: CreateDeckInput) {
 
 ## File Organization
 
-- **Schemas**: Define in separate files (e.g., `schemas.ts`, `validations.ts`)
-- **Server Actions**: Group related actions in files (e.g., `deck-actions.ts`, `card-actions.ts`)
-- **Types**: Export TypeScript types using `z.infer<typeof schema>`
+### Directory Structure
+```
+src/
+  db/
+    queries/
+      decks.ts          # All deck-related database operations
+      cards.ts          # All card-related database operations
+      reviews.ts        # All review/spaced-repetition operations
+    index.ts            # Database connection export
+    schema.ts           # Drizzle schema definitions
+  app/
+    dashboard/
+      actions.ts        # Server actions for dashboard
+      schemas.ts        # Zod validation schemas
+      page.tsx          # Server component
+```
+
+### Organization Rules
+
+- **Query Functions**: All database operations in `db/queries/` directory
+  - Group by domain (decks, cards, reviews)
+  - Export types using `InferSelectModel` and `InferInsertModel`
+  - Each function handles ONE specific database operation
+  - Include security checks (userId validation) within query functions
+
+- **Schemas**: Define Zod schemas in separate files per feature
+  - Location: `app/[feature]/schemas.ts`
+  - Export both schemas and inferred TypeScript types
+  - Keep validation logic close to where it's used
+
+- **Server Actions**: Group related actions by feature
+  - Location: `app/[feature]/actions.ts`
+  - Always marked with `"use server"`
+  - Call query functions (never access `db` directly)
+  - Handle authentication, validation, and revalidation
+
+- **Server Components**: Fetch data using query functions
+  - Call query functions directly (no API routes)
+  - Handle authentication before calling queries
+  - Pass data to client components via props
 
 ## Summary Checklist
 
 For every database operation, ensure:
 
-- [ ] Data retrieval is done in Server Components (not API routes)
-- [ ] Mutations are done via Server Actions (with `"use server"`)
+- [ ] **Query function exists** in `db/queries/` directory
+- [ ] **Never import `db` directly** in components or actions
+- [ ] Data retrieval is done in Server Components via query functions
+- [ ] Mutations are done via Server Actions that call query functions
 - [ ] Zod schema is defined for all inputs
 - [ ] TypeScript type is inferred from Zod schema
 - [ ] Server Action parameter has explicit type (never `formData` type)
 - [ ] Input is validated with `.parse()` or `.safeParse()`
-- [ ] User authentication is checked
-- [ ] User authorization is verified (ownership)
+- [ ] User authentication is checked in Server Action/Component
+- [ ] User authorization is verified (ownership) in query function
 - [ ] `revalidatePath()` is called after mutations
 - [ ] Errors are handled gracefully
+- [ ] Query functions have proper TypeScript return types
 
 **Never:**
-- Use API routes for simple data fetching
+- Import `db` directly in Server Components or Server Actions
+- Use API routes for data fetching
 - Skip Zod validation
 - Use `any` or `formData` as Server Action parameter types
 - Trust client-provided user IDs or ownership claims
 - Forget to revalidate paths after mutations
+- Put business logic in components instead of query functions
+
+## Benefits of Query Functions Pattern
+
+1. **Separation of Concerns**: Database logic is isolated from UI and action logic
+2. **Reusability**: Query functions can be used across multiple components and actions
+3. **Testability**: Query functions can be unit tested independently
+4. **Type Safety**: Centralized types for all database operations
+5. **Security**: Authorization logic is encapsulated in query functions
+6. **Maintainability**: Database changes only affect query functions, not scattered throughout the app
+7. **Code Organization**: Clear structure makes codebase easier to navigate

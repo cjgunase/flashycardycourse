@@ -1,0 +1,314 @@
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import {
+  createDeck as createDeckQuery,
+  updateDeck as updateDeckQuery,
+  deleteDeck as deleteDeckQuery,
+  updateDeckConfidence as updateDeckConfidenceQuery,
+} from "@/db/queries/decks";
+import {
+  createCard as createCardQuery,
+  updateCard as updateCardQuery,
+  deleteCard as deleteCardQuery,
+  verifyDeckOwnership,
+} from "@/db/queries/cards";
+import {
+  createDeckSchema,
+  updateDeckSchema,
+  deleteDeckSchema,
+  updateDeckConfidenceSchema,
+  createCardSchema,
+  updateCardSchema,
+  deleteCardSchema,
+  type CreateDeckInput,
+  type UpdateDeckInput,
+  type DeleteDeckInput,
+  type UpdateDeckConfidenceInput,
+  type CreateCardInput,
+  type UpdateCardInput,
+  type DeleteCardInput,
+} from "./schemas";
+
+/**
+ * Create a new deck
+ */
+export async function createDeckAction(input: CreateDeckInput) {
+  try {
+    // 1. Validate input with Zod
+    const validatedInput = createDeckSchema.parse(input);
+
+    // 2. Authenticate user
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // 3. Call query function - NEVER access db directly
+    const newDeck = await createDeckQuery({
+      userId,
+      title: validatedInput.title,
+      description: validatedInput.description,
+      confidenceLevel: validatedInput.confidenceLevel,
+    });
+
+    // 4. Revalidate affected paths
+    revalidatePath("/dashboard");
+
+    return { success: true, deck: newDeck };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to create deck:", error);
+    return { success: false, error: "Failed to create deck" };
+  }
+}
+
+/**
+ * Update an existing deck
+ */
+export async function updateDeckAction(input: UpdateDeckInput) {
+  try {
+    const validatedInput = updateDeckSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const updatedDeck = await updateDeckQuery({
+      deckId: validatedInput.deckId,
+      userId,
+      title: validatedInput.title,
+      description: validatedInput.description,
+      confidenceLevel: validatedInput.confidenceLevel,
+    });
+
+    if (!updatedDeck) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/decks/${validatedInput.deckId}`);
+
+    return { success: true, deck: updatedDeck };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to update deck:", error);
+    return { success: false, error: "Failed to update deck" };
+  }
+}
+
+/**
+ * Update deck confidence level only
+ */
+export async function updateDeckConfidenceAction(input: UpdateDeckConfidenceInput) {
+  try {
+    const validatedInput = updateDeckConfidenceSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const updatedDeck = await updateDeckConfidenceQuery(
+      validatedInput.deckId,
+      userId,
+      validatedInput.confidenceLevel
+    );
+
+    if (!updatedDeck) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    revalidatePath("/dashboard");
+
+    return { success: true, deck: updatedDeck };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to update deck confidence:", error);
+    return { success: false, error: "Failed to update deck confidence" };
+  }
+}
+
+/**
+ * Delete a deck
+ */
+export async function deleteDeckAction(input: DeleteDeckInput) {
+  try {
+    const validatedInput = deleteDeckSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const success = await deleteDeckQuery(validatedInput.deckId, userId);
+
+    if (!success) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to delete deck:", error);
+    return { success: false, error: "Failed to delete deck" };
+  }
+}
+
+/**
+ * Create a new card in a deck
+ */
+export async function createCardAction(input: CreateCardInput) {
+  try {
+    const validatedInput = createCardSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Verify user owns the deck
+    const ownsDeack = await verifyDeckOwnership(validatedInput.deckId, userId);
+    if (!ownsDeack) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    const newCard = await createCardQuery({
+      deckId: validatedInput.deckId,
+      question: validatedInput.question,
+      answer: validatedInput.answer,
+    });
+
+    revalidatePath(`/decks/${validatedInput.deckId}`);
+
+    return { success: true, card: newCard };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to create card:", error);
+    return { success: false, error: "Failed to create card" };
+  }
+}
+
+/**
+ * Update an existing card
+ */
+export async function updateCardAction(input: UpdateCardInput) {
+  try {
+    const validatedInput = updateCardSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Verify user owns the deck
+    const ownsDeck = await verifyDeckOwnership(validatedInput.deckId, userId);
+    if (!ownsDeck) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    const updatedCard = await updateCardQuery({
+      cardId: validatedInput.cardId,
+      deckId: validatedInput.deckId,
+      question: validatedInput.question,
+      answer: validatedInput.answer,
+    });
+
+    if (!updatedCard) {
+      return { success: false, error: "Card not found" };
+    }
+
+    revalidatePath(`/decks/${validatedInput.deckId}`);
+
+    return { success: true, card: updatedCard };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to update card:", error);
+    return { success: false, error: "Failed to update card" };
+  }
+}
+
+/**
+ * Delete a card
+ */
+export async function deleteCardAction(input: DeleteCardInput) {
+  try {
+    const validatedInput = deleteCardSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Verify user owns the deck
+    const ownsDeck = await verifyDeckOwnership(validatedInput.deckId, userId);
+    if (!ownsDeck) {
+      return { success: false, error: "Deck not found or access denied" };
+    }
+
+    const success = await deleteCardQuery(
+      validatedInput.cardId,
+      validatedInput.deckId
+    );
+
+    if (!success) {
+      return { success: false, error: "Card not found" };
+    }
+
+    revalidatePath(`/decks/${validatedInput.deckId}`);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to delete card:", error);
+    return { success: false, error: "Failed to delete card" };
+  }
+}
+

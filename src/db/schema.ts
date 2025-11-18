@@ -7,6 +7,7 @@ export const decksTable = pgTable("decks", {
   clerkUserId: varchar("clerk_user_id", { length: 255 }).notNull(),
   title: varchar({ length: 255 }).notNull(),
   description: text(),
+  confidenceLevel: integer("confidence_level").default(2).notNull(), // 1: Less confident, 2: Medium, 3: More confident
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

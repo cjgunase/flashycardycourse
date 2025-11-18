@@ -1,9 +1,25 @@
----
-alwaysApply: true
----
-# shadcn UI Configuration
+# shadcn UI - STRICT USAGE POLICY
 
-This project uses **shadcn UI** for all UI elements and components.
+This project uses **shadcn UI** EXCLUSIVELY for ALL UI elements and components.
+
+## 🚨 CRITICAL RULES - NO EXCEPTIONS
+
+### 1. **ONLY shadcn UI Components**
+- **NEVER** create custom UI components from scratch
+- **NEVER** write custom button, input, card, dialog, or any other UI element code
+- **ALWAYS** use shadcn UI components for every single UI element
+- **ALWAYS** check the [shadcn UI documentation](https://ui.shadcn.com/) before implementing any UI
+
+### 2. **NO Custom Styling for Core UI Elements**
+- **NEVER** create custom styled divs that replicate shadcn UI components
+- **NEVER** write custom CSS for buttons, inputs, cards, etc.
+- If you need to customize appearance, use shadcn UI's built-in variants and className props
+- Only add custom styling for layout and spacing, not for core interactive elements
+
+### 3. **Install Before Use**
+- **ALWAYS** check if a component is installed before using it
+- **ALWAYS** install missing shadcn UI components using the CLI
+- Available components: https://ui.shadcn.com/docs/components
 
 ## Initialization
 
@@ -21,15 +37,205 @@ To add a specific shadcn UI component that is not yet installed, use:
 npx shadcn@latest add <component-name>
 ```
 
-### Examples:
-- Button: `npx shadcn@latest add button`
-- Card: `npx shadcn@latest add card`
-- Dialog: `npx shadcn@latest add dialog`
-- Input: `npx shadcn@latest add input`
+### Common Components:
+- **Button**: `npx shadcn@latest add button` ✅ Already installed
+- **Card**: `npx shadcn@latest add card` ✅ Already installed
+- **Dialog**: `npx shadcn@latest add dialog`
+- **Input**: `npx shadcn@latest add input`
+- **Form**: `npx shadcn@latest add form`
+- **Label**: `npx shadcn@latest add label`
+- **Select**: `npx shadcn@latest add select`
+- **Textarea**: `npx shadcn@latest add textarea`
+- **Dropdown Menu**: `npx shadcn@latest add dropdown-menu`
+- **Popover**: `npx shadcn@latest add popover`
+- **Toast**: `npx shadcn@latest add toast`
+- **Alert Dialog**: `npx shadcn@latest add alert-dialog`
+- **Badge**: `npx shadcn@latest add badge`
+- **Avatar**: `npx shadcn@latest add avatar`
+- **Tabs**: `npx shadcn@latest add tabs`
+- **Sheet**: `npx shadcn@latest add sheet`
 
-## Important Notes
+## 🔐 Clerk Authentication Integration
 
-- Always use shadcn UI components for UI elements instead of building custom components from scratch
-- Check if a component is already installed before attempting to add it
-- shadcn UI components are located in the `src/components/ui` directory (after installation)
-- The configuration file is [components.json](mdc:components.json)
+### **CRITICAL**: Use shadcn UI Components with Clerk
+
+**NEVER** use Clerk's pre-built UI components (`<SignInButton>`, `<SignUpButton>`, `<UserButton>` with default styling).
+
+**ALWAYS** use shadcn UI components to trigger Clerk authentication:
+
+### ✅ CORRECT Pattern - shadcn Button with Clerk Modal
+
+```typescript
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { useClerk } from "@clerk/nextjs";
+
+export function AuthButtons() {
+  const { openSignIn, openSignUp } = useClerk();
+
+  return (
+    <div className="flex gap-2">
+      <Button 
+        variant="outline" 
+        onClick={() => openSignIn()}
+      >
+        Sign In
+      </Button>
+      
+      <Button 
+        onClick={() => openSignUp()}
+      >
+        Sign Up
+      </Button>
+    </div>
+  );
+}
+```
+
+### ✅ User Profile with shadcn Dropdown Menu
+
+```typescript
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser, useClerk } from "@clerk/nextjs";
+
+export function UserMenu() {
+  const { user } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+
+  if (!user) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar>
+            <AvatarImage src={user.imageUrl} alt={user.fullName || ""} />
+            <AvatarFallback>
+              {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium">{user.fullName}</p>
+            <p className="text-xs text-muted-foreground">
+              {user.primaryEmailAddress?.emailAddress}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => openUserProfile()}>
+          Profile Settings
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => signOut()}>
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+```
+
+### ❌ WRONG - Using Clerk's Default Components
+
+```typescript
+// ❌ NEVER DO THIS - Custom button
+<button onClick={() => openSignIn()}>Sign In</button>
+
+// ❌ NEVER DO THIS - Clerk's pre-styled components
+import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+<SignInButton />
+<SignUpButton />
+<UserButton />
+
+// ❌ NEVER DO THIS - Custom styled button
+<div className="custom-button" onClick={() => openSignIn()}>
+  Sign In
+</div>
+```
+
+### Clerk Modal Configuration
+
+Ensure Clerk modals use the project's theme. In your root layout:
+
+```typescript
+import { ClerkProvider } from "@clerk/nextjs";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider
+      appearance={{
+        baseTheme: undefined, // Use default or import from @clerk/themes
+        variables: {
+          colorPrimary: "hsl(var(--primary))",
+          colorBackground: "hsl(var(--background))",
+          colorText: "hsl(var(--foreground))",
+        },
+      }}
+    >
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+## Component Locations
+
+- All shadcn UI components are in: `src/components/ui/`
+- Configuration file: `components.json`
+- Components are auto-imported from: `@/components/ui/<component-name>`
+
+## Before You Code - Checklist
+
+Before implementing ANY UI feature:
+
+- [ ] Check if the UI element you need exists in shadcn UI
+- [ ] Install the shadcn UI component if not present
+- [ ] Use the installed component - DO NOT create custom UI
+- [ ] For Clerk auth, use `useClerk()` hooks with shadcn UI buttons
+- [ ] For Clerk modals, use `openSignIn()`, `openSignUp()`, `openUserProfile()`
+- [ ] Customize using shadcn UI's variants, not custom components
+
+## Examples of Required Components
+
+### Need a button? 
+❌ Don't create: `<button className="...">` or `<div onClick>`
+✅ Use: `<Button>` from shadcn UI
+
+### Need a card?
+❌ Don't create: `<div className="card">`
+✅ Use: `<Card>`, `<CardHeader>`, `<CardContent>` from shadcn UI
+
+### Need a form input?
+❌ Don't create: `<input className="...">`
+✅ Use: `<Input>` from shadcn UI
+
+### Need a modal/dialog?
+❌ Don't create: Custom modal with `<div>` and `position: fixed`
+✅ Use: `<Dialog>` from shadcn UI
+
+### Need authentication buttons?
+❌ Don't use: Clerk's `<SignInButton>` or custom `<button>`
+✅ Use: `<Button>` from shadcn UI with `useClerk()` hooks
+
+## Summary
+
+**Golden Rule**: If you're about to write HTML for a UI element, STOP and find the equivalent shadcn UI component. If it doesn't exist, ask the user before proceeding. NEVER create custom UI components in this project.
+
+**Clerk Integration**: ALWAYS use shadcn UI `<Button>` components with Clerk's `useClerk()` hooks (`openSignIn`, `openSignUp`, `openUserProfile`, `signOut`) to trigger modals. NEVER use Clerk's pre-built button components.

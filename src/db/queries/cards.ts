@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { cardsTable, decksTable } from "@/db/schema";
-import { eq, and, lte, isNull, or } from "drizzle-orm";
+import { eq, and, lte, isNull, or, sql } from "drizzle-orm";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 export type Card = InferSelectModel<typeof cardsTable>;
@@ -137,7 +137,7 @@ export async function updateCardReview(data: {
       lastReviewedAt: new Date(),
       nextDueAt: data.nextDueAt,
       easeFactor: data.easeFactor,
-      reviewCount: db.$default(cardsTable.reviewCount),
+      reviewCount: sql`${cardsTable.reviewCount} + 1`,
     })
     .where(eq(cardsTable.id, data.cardId))
     .returning();

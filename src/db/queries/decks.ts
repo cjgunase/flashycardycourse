@@ -1,10 +1,16 @@
 import { db } from "@/db";
-import { decksTable } from "@/db/schema";
+import { decksTable, cardsTable } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 export type Deck = InferSelectModel<typeof decksTable>;
 export type NewDeck = InferInsertModel<typeof decksTable>;
+export type Card = InferSelectModel<typeof cardsTable>;
+
+// Type for a deck that includes its cards
+export type DeckWithCards = Deck & {
+  cards: Card[];
+};
 
 /**
  * Get all decks for a specific user, ordered by most recently updated
@@ -19,11 +25,12 @@ export async function getUserDecks(userId: string): Promise<Deck[]> {
 
 /**
  * Get a single deck by ID with ownership verification
+ * Returns the deck with all its cards
  */
 export async function getDeckById(
   deckId: number,
   userId: string
-): Promise<Deck | undefined> {
+): Promise<DeckWithCards | undefined> {
   return await db.query.decksTable.findFirst({
     where: and(
       eq(decksTable.id, deckId),

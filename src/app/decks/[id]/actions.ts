@@ -43,6 +43,12 @@ export async function generateDeckMarkdown(deckId: number) {
       markdown += `${card.question}\n\n`;
       markdown += `**Answer:**\n\n`;
       markdown += `${card.answer}\n\n`;
+
+      if (card.aiHelp) {
+        markdown += `**AI Help:**\n\n`;
+        markdown += `${card.aiHelp}\n\n`;
+      }
+
       markdown += `---\n\n`;
     });
   } else {

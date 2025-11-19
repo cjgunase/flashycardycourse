@@ -41,12 +41,29 @@ export async function createDeckAction(input: CreateDeckInput) {
     const validatedInput = createDeckSchema.parse(input);
 
     // 2. Authenticate user
-    const { userId } = await auth();
+    const { userId, has } = await auth();
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // 3. Call query function - NEVER access db directly
+    // 3. Check if user has unlimited decks feature
+    const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+    
+    if (!hasUnlimitedDecks) {
+      // Free user - check deck count
+      const { getUserDecks } = await import("@/db/queries/decks");
+      const existingDecks = await getUserDecks(userId);
+      
+      if (existingDecks.length >= 3) {
+        return {
+          success: false,
+          error: "Free users can create up to 3 decks. Upgrade to Pro for unlimited decks.",
+          requiresUpgrade: true,
+        };
+      }
+    }
+
+    // 4. Call query function - NEVER access db directly
     const newDeck = await createDeckQuery({
       userId,
       title: validatedInput.title,
@@ -54,7 +71,7 @@ export async function createDeckAction(input: CreateDeckInput) {
       confidenceLevel: validatedInput.confidenceLevel,
     });
 
-    // 4. Revalidate affected paths
+    // 5. Revalidate affected paths
     revalidatePath("/dashboard");
 
     return { success: true, deck: newDeck };

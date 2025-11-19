@@ -6,7 +6,7 @@ import { CreateDeckDialog } from "./_components/create-deck-dialog";
 import { DeckCard } from "./_components/deck-card";
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
 
   if (!userId) {
     redirect("/");
@@ -14,6 +14,11 @@ export default async function DashboardPage() {
 
   // Fetch user's decks using query function
   const decks = await getUserDecks(userId);
+
+  // Check if user has unlimited decks feature (Pro plan)
+  const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  const deckLimit = hasUnlimitedDecks ? null : 3;
+  const canCreateMoreDecks = hasUnlimitedDecks || decks.length < 3;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -26,9 +31,14 @@ export default async function DashboardPage() {
               {decks.length === 0
                 ? "Create your first flashcard deck to get started"
                 : `You have ${decks.length} ${decks.length === 1 ? "deck" : "decks"}`}
+              {deckLimit && ` (${decks.length}/${deckLimit} used)`}
             </p>
           </div>
-          <CreateDeckDialog />
+          <CreateDeckDialog 
+            canCreateMoreDecks={canCreateMoreDecks}
+            currentDeckCount={decks.length}
+            deckLimit={deckLimit}
+          />
         </div>
 
 

@@ -1,0 +1,551 @@
+---
+alwaysApply: true
+---
+# Clerk Billing Integration Rules
+
+This project uses **Clerk Billing** for subscription management and payment processing. All billing-related features must follow the patterns and best practices outlined in this guide.
+
+## Important Notes
+
+- **Clerk Billing is currently in Beta** - APIs are experimental and may undergo breaking changes
+- **Stripe Integration** - Clerk uses Stripe for payment processing but manages its own plans and subscriptions
+- **Currency** - Only USD is currently supported
+- **Stripe Account** - Development and production environments must use separate Stripe accounts
+
+## Available Plans
+
+This application offers the following subscription plans:
+
+### 1. `free_user` (Free Plan)
+- Default plan for all new users
+- Limited to 3 decks maximum
+- No AI helper access
+- No payment required
+
+### 2. `pro` (Pro Plan)
+- Unlimited decks
+- AI helper feature access
+- Paid subscription (monthly or annual billing)
+
+## Available Features
+
+Features are the building blocks of plans and control access to specific functionality:
+
+### 1. `3_deck_limit`
+- Available on: `free_user` plan
+- Restricts users to creating maximum 3 decks
+- Must be enforced in deck creation logic
+
+### 2. `unlimited_decks`
+- Available on: `pro` plan
+- Allows users to create unlimited decks
+- Removes the 3-deck restriction
+
+### 3. `ai_helper`
+- Available on: `pro` plan
+- Grants access to AI-powered features (e.g., flashcard generation, study suggestions)
+- Must be checked before showing AI-related UI elements
+
+## Checking User Plans and Features
+
+### Server-Side Plan Checking
+
+Use Clerk's server-side helpers to check user plans and features in Server Components and Server Actions:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export default async function DashboardPage() {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    redirect("/");
+  }
+  
+  // Check if user has a specific plan
+  const isProUser = await has({ plan: "pro" });
+  const isFreeUser = await has({ plan: "free_user" });
+  
+  // Check if user has a specific feature
+  const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  const hasAiHelper = await has({ feature: "ai_helper" });
+  
+  return (
+    <div>
+      {hasAiHelper && <AiHelperButton />}
+      {/* Rest of component */}
+    </div>
+  );
+}
+```
+
+### Client-Side Plan Checking
+
+Use Clerk's client-side hooks to check plans and features in Client Components:
+
+```typescript
+"use client";
+
+import { useUser } from "@clerk/nextjs";
+
+export function CreateDeckButton() {
+  const { user } = useUser();
+  
+  // Check plan
+  const isProUser = user?.has({ plan: "pro" });
+  
+  // Check feature
+  const hasUnlimitedDecks = user?.has({ feature: "unlimited_decks" });
+  
+  return (
+    <div>
+      {!hasUnlimitedDecks && (
+        <p className="text-sm text-muted-foreground">
+          Free users can create up to 3 decks. Upgrade to Pro for unlimited decks.
+        </p>
+      )}
+      <Button>Create Deck</Button>
+    </div>
+  );
+}
+```
+
+## Enforcing Plan Limits
+
+### Deck Creation Limit (Free Plan)
+
+Always enforce the 3-deck limit for free users in Server Actions:
+
+```typescript
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { getUserDecks } from "@/db/queries/decks";
+
+export async function createDeckAction(input: CreateDeckInput) {
+  const validated = createDeckSchema.parse(input);
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  
+  // Check if user has unlimited decks feature
+  const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  
+  if (!hasUnlimitedDecks) {
+    // Free user - check deck count
+    const existingDecks = await getUserDecks(userId);
+    
+    if (existingDecks.length >= 3) {
+      return {
+        success: false,
+        error: "Free users can create up to 3 decks. Upgrade to Pro for unlimited decks.",
+        requiresUpgrade: true,
+      };
+    }
+  }
+  
+  // Proceed with deck creation
+  const newDeck = await createDeckQuery({
+    userId,
+    title: validated.title,
+    description: validated.description,
+  });
+  
+  revalidatePath("/dashboard");
+  return { success: true, deck: newDeck };
+}
+```
+
+### AI Feature Access
+
+Always check for `ai_helper` feature before executing AI-related operations:
+
+```typescript
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+
+export async function generateFlashcardsWithAI(input: GenerateCardsInput) {
+  const validated = generateCardsSchema.parse(input);
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  
+  // Check if user has AI helper feature
+  const hasAiHelper = await has({ feature: "ai_helper" });
+  
+  if (!hasAiHelper) {
+    return {
+      success: false,
+      error: "AI helper is only available for Pro users. Upgrade to access this feature.",
+      requiresUpgrade: true,
+    };
+  }
+  
+  // Proceed with AI generation
+  // ... AI logic here
+}
+```
+
+## Protecting UI Elements
+
+### Conditionally Rendering Pro Features
+
+Show or hide UI elements based on user's plan or features:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export default async function DeckDetailPage({ params }: { params: { id: string } }) {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    redirect("/");
+  }
+  
+  const hasAiHelper = await has({ feature: "ai_helper" });
+  const deck = await getDeckById(parseInt(params.id), userId);
+  
+  return (
+    <div>
+      <h1>{deck.title}</h1>
+      
+      {/* Show AI helper only for Pro users */}
+      {hasAiHelper ? (
+        <AiGenerateCardsButton deckId={deck.id} />
+      ) : (
+        <UpgradePrompt feature="AI Helper" />
+      )}
+      
+      {/* Rest of component */}
+    </div>
+  );
+}
+```
+
+### Creating Upgrade Prompts
+
+Create reusable components to encourage upgrades:
+
+```typescript
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+interface UpgradePromptProps {
+  feature: string;
+  description?: string;
+}
+
+export function UpgradePrompt({ feature, description }: UpgradePromptProps) {
+  return (
+    <Card className="p-6 border-2 border-primary/20">
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-lg">Upgrade to Pro</h3>
+          <p className="text-sm text-muted-foreground">
+            {description || `${feature} is available on the Pro plan.`}
+          </p>
+        </div>
+        <Button asChild>
+          <a href="/billing">Upgrade Now</a>
+        </Button>
+      </div>
+    </Card>
+  );
+}
+```
+
+## Subscription Management Pages
+
+### Creating a Billing/Checkout Page
+
+Create a dedicated page for users to manage their subscriptions:
+
+```typescript
+// app/billing/page.tsx
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+
+export default async function BillingPage() {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    redirect("/");
+  }
+  
+  const isProUser = await has({ plan: "pro" });
+  
+  return (
+    <div className="container max-w-4xl mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">Billing & Subscription</h1>
+      
+      {isProUser ? (
+        <CurrentSubscriptionCard />
+      ) : (
+        <UpgradeCard />
+      )}
+      
+      <PricingPlans />
+    </div>
+  );
+}
+```
+
+### Building a Checkout Flow
+
+Use Clerk's `<Billing />` component for subscription checkout:
+
+```typescript
+"use client";
+
+import { Billing } from "@clerk/nextjs";
+
+export function CheckoutForm() {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <Billing 
+        appearance={{
+          elements: {
+            rootBox: "w-full",
+            card: "shadow-sm border",
+          }
+        }}
+      />
+    </div>
+  );
+}
+```
+
+## Webhooks for Subscription Events
+
+### Setting Up Webhook Handlers
+
+Create webhook handlers to track subscription lifecycle events:
+
+```typescript
+// app/api/webhooks/clerk-billing/route.ts
+import { headers } from "next/headers";
+import { Webhook } from "svix";
+import { WebhookEvent } from "@clerk/nextjs/server";
+
+export async function POST(req: Request) {
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+  
+  if (!WEBHOOK_SECRET) {
+    throw new Error("Missing CLERK_WEBHOOK_SECRET");
+  }
+  
+  const headerPayload = headers();
+  const svix_id = headerPayload.get("svix-id");
+  const svix_timestamp = headerPayload.get("svix-timestamp");
+  const svix_signature = headerPayload.get("svix-signature");
+  
+  if (!svix_id || !svix_timestamp || !svix_signature) {
+    return new Response("Missing svix headers", { status: 400 });
+  }
+  
+  const payload = await req.json();
+  const body = JSON.stringify(payload);
+  
+  const wh = new Webhook(WEBHOOK_SECRET);
+  let evt: WebhookEvent;
+  
+  try {
+    evt = wh.verify(body, {
+      "svix-id": svix_id,
+      "svix-timestamp": svix_timestamp,
+      "svix-signature": svix_signature,
+    }) as WebhookEvent;
+  } catch (err) {
+    console.error("Webhook verification failed:", err);
+    return new Response("Webhook verification failed", { status: 400 });
+  }
+  
+  // Handle different subscription events
+  switch (evt.type) {
+    case "subscription.created":
+      // Handle new subscription
+      console.log("New subscription:", evt.data);
+      break;
+      
+    case "subscription.updated":
+      // Handle subscription update (upgrade/downgrade)
+      console.log("Subscription updated:", evt.data);
+      break;
+      
+    case "subscription.deleted":
+      // Handle subscription cancellation
+      console.log("Subscription canceled:", evt.data);
+      break;
+      
+    case "payment.successful":
+      // Handle successful payment
+      console.log("Payment successful:", evt.data);
+      break;
+      
+    case "payment.failed":
+      // Handle failed payment
+      console.log("Payment failed:", evt.data);
+      break;
+  }
+  
+  return new Response("Webhook processed", { status: 200 });
+}
+```
+
+## Plan Upgrade/Downgrade Behavior
+
+- **Upgrades**: Take effect immediately
+- **Downgrades**: Take effect at the end of the current billing cycle
+- **Cancellations**: User retains access until the end of the billing period
+
+## Testing
+
+### Test Mode Setup
+
+1. Use Stripe test mode in development environment
+2. Use [Stripe test cards](https://docs.stripe.com/testing) for testing payment scenarios
+3. Test both successful and failed payment scenarios
+
+### Common Test Cases
+
+- [ ] Free user cannot create more than 3 decks
+- [ ] Free user cannot access AI helper features
+- [ ] Pro user can create unlimited decks
+- [ ] Pro user can access AI helper features
+- [ ] Subscription upgrade grants immediate access to Pro features
+- [ ] Subscription downgrade maintains Pro access until end of billing cycle
+- [ ] Failed payment webhook is handled correctly
+- [ ] Subscription cancellation revokes Pro access at cycle end
+
+## Security Best Practices
+
+1. **Always verify server-side**: Never trust client-side plan/feature checks for critical operations
+2. **Check permissions before operations**: Validate plan/feature access in Server Actions before executing operations
+3. **Return meaningful errors**: When denying access, indicate that an upgrade is required
+4. **Webhook verification**: Always verify webhook signatures to prevent spoofing
+5. **Environment separation**: Keep development and production Stripe accounts separate
+
+## Integration with Existing Patterns
+
+### Query Functions
+
+When checking limits, use existing query functions from [db/queries](mdc:src/db/queries):
+
+```typescript
+import { getUserDecks } from "@/db/queries/decks";
+import { auth } from "@clerk/nextjs/server";
+
+export async function checkDeckLimit(): Promise<boolean> {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    return false;
+  }
+  
+  const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  
+  if (hasUnlimitedDecks) {
+    return true; // No limit for Pro users
+  }
+  
+  // Check deck count for free users
+  const decks = await getUserDecks(userId);
+  return decks.length < 3;
+}
+```
+
+### Server Actions
+
+Integrate plan checks into existing Server Actions patterns:
+
+```typescript
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { createDeckSchema, type CreateDeckInput } from "./schemas";
+
+export async function createDeckAction(input: CreateDeckInput) {
+  // 1. Validate input
+  const validated = createDeckSchema.parse(input);
+  
+  // 2. Authenticate user
+  const { userId, has } = await auth();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  
+  // 3. Check plan limits
+  const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  if (!hasUnlimitedDecks) {
+    const existingDecks = await getUserDecks(userId);
+    if (existingDecks.length >= 3) {
+      return {
+        success: false,
+        error: "Deck limit reached. Upgrade to Pro for unlimited decks.",
+        requiresUpgrade: true,
+      };
+    }
+  }
+  
+  // 4. Proceed with operation
+  const newDeck = await createDeckQuery({
+    userId,
+    title: validated.title,
+    description: validated.description,
+  });
+  
+  revalidatePath("/dashboard");
+  return { success: true, deck: newDeck };
+}
+```
+
+## Environment Variables
+
+Ensure the following environment variables are set:
+
+```bash
+# Clerk API Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+
+# Clerk Webhook Secret (for billing webhooks)
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# Clerk URLs
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+```
+
+## Summary Checklist
+
+When implementing billing-related features:
+
+- [ ] Check user plan/feature access server-side in Server Actions
+- [ ] Enforce the 3-deck limit for `free_user` plan
+- [ ] Restrict AI features to users with `ai_helper` feature
+- [ ] Show/hide Pro features based on plan access
+- [ ] Provide clear upgrade prompts when features are unavailable
+- [ ] Use existing query functions for checking deck counts
+- [ ] Follow Server Action patterns (auth, validation, query functions)
+- [ ] Return meaningful error messages with `requiresUpgrade` flag
+- [ ] Set up webhook handlers for subscription lifecycle events
+- [ ] Test both free and pro user flows thoroughly
+- [ ] Never trust client-side plan checks for critical operations
+
+## Common Pitfalls to Avoid
+
+- ❌ Only checking plan access client-side (always verify server-side)
+- ❌ Allowing deck creation without checking the limit
+- ❌ Showing AI features to free users
+- ❌ Not providing upgrade prompts when denying access
+- ❌ Forgetting to revalidate paths after plan changes
+- ❌ Using the same Stripe account for dev and prod
+- ❌ Not handling webhook events for subscription changes
+- ❌ Hardcoding plan limits instead of checking features dynamically

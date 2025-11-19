@@ -36,6 +36,12 @@ export function Header() {
               >
                 Dashboard
               </Link>
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
+              >
+                Pricing
+              </Link>
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -66,6 +72,12 @@ export function Header() {
             </>
           ) : (
             <>
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
+              >
+                Pricing
+              </Link>
               <ThemeToggle />
               <Button
                 variant="outline"

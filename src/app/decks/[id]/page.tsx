@@ -9,6 +9,7 @@ import { CreateCardDialog } from "./_components/create-card-dialog";
 import { CardItem } from "./_components/card-item";
 import { DownloadDeckButton } from "./_components/download-deck-button";
 import { DeleteDeckDialog } from "./_components/delete-deck-dialog";
+import { DeckView } from "./_components/deck-view";
 
 export default async function DeckDetailPage({
   params,
@@ -95,16 +96,7 @@ export default async function DeckDetailPage({
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {deck.cards.map((card, index) => (
-              <CardItem 
-                key={card.id} 
-                card={card} 
-                deckId={deckId} 
-                cardNumber={index + 1}
-              />
-            ))}
-          </div>
+          <DeckView initialCards={deck.cards} deckId={deckId} />
         )}
       </div>
     </div>

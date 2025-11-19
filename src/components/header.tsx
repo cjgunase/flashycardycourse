@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,8 +24,15 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 transition-colors hover:text-zinc-700 dark:hover:text-zinc-300"
+          className="flex items-center gap-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 transition-colors hover:text-zinc-700 dark:hover:text-zinc-300"
         >
+          <Image
+            src="/logo.png"
+            alt="FlashyDoc Logo"
+            width={60}
+            height={60}
+            className="rounded-md w-[60px] h-[60px]"
+          />
           FlashyDoc
         </Link>
         <div className="flex items-center gap-4">

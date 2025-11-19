@@ -15,6 +15,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "FlashyDoc",
   description: "Learn with flashcards",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

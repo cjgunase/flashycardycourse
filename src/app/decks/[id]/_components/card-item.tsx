@@ -12,12 +12,45 @@ interface CardItemProps {
   card: CardType;
   deckId: number;
   cardNumber: number;
+  onMarkDone?: () => void;
 }
 
-export function CardItem({ card, deckId, cardNumber }: CardItemProps) {
+export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<"done" | "needs-revision" | null>(null);
   const [showAiHelp, setShowAiHelp] = useState(false);
+  const [aiHelpContent, setAiHelpContent] = useState<string | null>(card.aiHelp || null);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
+
+  const handleGetAiHelp = async () => {
+    const newShowAiHelp = !showAiHelp;
+    setShowAiHelp(newShowAiHelp);
+
+    if (newShowAiHelp && !aiHelpContent) {
+      setIsLoadingAi(true);
+      try {
+        const response = await fetch("/api/ai-help", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question: card.question,
+            answer: card.answer,
+            cardId: card.id,
+          }),
+        });
+        const data = await response.json();
+        if (data.response) {
+          setAiHelpContent(data.response);
+        }
+      } catch (error) {
+        console.error("Failed to get AI help:", error);
+      } finally {
+        setIsLoadingAi(false);
+      }
+    }
+  };
 
   return (
     <Card className="border-2 border-border bg-card hover:border-primary/50 transition-colors">
@@ -39,7 +72,10 @@ export function CardItem({ card, deckId, cardNumber }: CardItemProps) {
                 name={`review-status-${card.id}`}
                 value="done"
                 checked={reviewStatus === "done"}
-                onChange={() => setReviewStatus("done")}
+                onChange={() => {
+                  setReviewStatus("done");
+                  onMarkDone?.();
+                }}
                 className="w-4 h-4 text-green-600 focus:ring-green-500"
               />
               <span className="text-sm font-medium text-foreground">Done</span>
@@ -83,9 +119,10 @@ export function CardItem({ card, deckId, cardNumber }: CardItemProps) {
         {reviewStatus === "needs-revision" && (
           <div className="mb-4">
             <Button
-              onClick={() => setShowAiHelp(!showAiHelp)}
+              onClick={handleGetAiHelp}
               variant="outline"
-              className="w-full border-orange-500/50 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+              className={`w-full border-orange-500/50 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 ${isLoadingAi ? "animate-pulse border-orange-500 ring-1 ring-orange-500" : ""
+                }`}
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {showAiHelp ? "Hide AI Help" : "Get AI Help"}
@@ -129,12 +166,23 @@ export function CardItem({ card, deckId, cardNumber }: CardItemProps) {
               </span>
             </div>
             <div className="text-sm text-muted-foreground">
-              <p className="italic">
-                AI-generated context and explanations will appear here to help you better understand this card.
-              </p>
-              <p className="mt-2 text-xs text-orange-600/70 dark:text-orange-400/70">
-                Coming soon: Additional explanations, mnemonics, and related concepts.
-              </p>
+              {isLoadingAi ? (
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 animate-spin" />
+                  <span>Generating helpful hints...</span>
+                </div>
+              ) : aiHelpContent ? (
+                <p className="whitespace-pre-wrap">{aiHelpContent}</p>
+              ) : (
+                <p className="italic">
+                  AI-generated context and explanations will appear here to help you better understand this card.
+                </p>
+              )}
+              {!isLoadingAi && !aiHelpContent && (
+                <p className="mt-2 text-xs text-orange-600/70 dark:text-orange-400/70">
+                  Click "Get AI Help" to generate hints.
+                </p>
+              )}
             </div>
           </div>
         )}

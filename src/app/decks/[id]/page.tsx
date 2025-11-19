@@ -7,6 +7,8 @@ import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
 import { CreateCardDialog } from "./_components/create-card-dialog";
 import { CardItem } from "./_components/card-item";
+import { DownloadDeckButton } from "./_components/download-deck-button";
+import { DeleteDeckDialog } from "./_components/delete-deck-dialog";
 
 export default async function DeckDetailPage({
   params,
@@ -64,7 +66,11 @@ export default async function DeckDetailPage({
               </p>
             </div>
 
-            <CreateCardDialog deckId={deckId} />
+            <div className="flex gap-2">
+              <DeleteDeckDialog deckId={deckId} deckTitle={deck.title} />
+              <DownloadDeckButton deckId={deckId} />
+              <CreateCardDialog deckId={deckId} />
+            </div>
           </div>
         </div>
 

@@ -102,7 +102,7 @@ export const updateCardConfidenceSchema = z.object({
  */
 export const reviewCardSchema = z.object({
   cardId: z.number().positive("Invalid card ID"),
-  quality: z.number().min(0).max(5, "Quality must be between 0 and 5"),
+  confidenceRating: z.number().min(1).max(3, "Confidence rating must be 1 (Less Confident), 2 (Medium), or 3 (More Confident)"),
 });
 
 // Export TypeScript types from schemas

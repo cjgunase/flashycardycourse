@@ -20,12 +20,11 @@ interface CardItemProps {
   card: CardType;
   deckId: number;
   cardNumber: number;
-  onMarkDone?: () => void;
+  onCardReviewed?: () => void;
 }
 
-export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps) {
+export function CardItem({ card, deckId, cardNumber, onCardReviewed }: CardItemProps) {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [reviewStatus, setReviewStatus] = useState<"done" | "needs-revision" | null>(null);
   const [showAiHelp, setShowAiHelp] = useState(false);
   const [aiHelpContent, setAiHelpContent] = useState<string | null>(card.aiHelp || null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
@@ -68,12 +67,26 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
     setIsUpdatingConfidence(true);
 
     try {
+      // Update confidence level
       await updateCardConfidenceAction({
         cardId: card.id,
         confidenceLevel: newLevel,
       });
+
+      // Auto-review the card
+      const { reviewCardAction } = await import("@/app/dashboard/actions");
+      const result = await reviewCardAction({
+        cardId: card.id,
+        confidenceRating: newLevel as 1 | 2 | 3,
+      });
+
+      if (result.success) {
+        onCardReviewed?.();
+      } else {
+        console.error("Failed to review card:", result.error);
+      }
     } catch (error) {
-      console.error("Failed to update confidence level:", error);
+      console.error("Failed to update confidence level or review card:", error);
       // Revert on error
       setConfidenceLevel(card.confidenceLevel || 2);
     } finally {
@@ -86,43 +99,13 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
   return (
     <Card className="border-2 border-border bg-card hover:border-primary/50 transition-colors">
       <CardHeader className="space-y-4">
-        {/* Top Row: Card Number and Review Status */}
+        {/* Top Row: Card Number */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {/* Card Number - Top Left */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
               Card #{cardNumber}
             </span>
-          </div>
-
-          {/* Review Status Radio Buttons - Stacks on mobile */}
-          <div className="flex flex-col xs:flex-row gap-3 xs:gap-4">
-            <label className="flex items-center gap-2 cursor-pointer min-h-[44px] xs:min-h-0">
-              <input
-                type="radio"
-                name={`review-status-${card.id}`}
-                value="done"
-                checked={reviewStatus === "done"}
-                onChange={() => {
-                  setReviewStatus("done");
-                  onMarkDone?.();
-                }}
-                className="w-5 h-5 text-green-600 focus:ring-green-500 flex-shrink-0"
-              />
-              <span className="text-sm font-medium text-foreground">Done</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer min-h-[44px] xs:min-h-0">
-              <input
-                type="radio"
-                name={`review-status-${card.id}`}
-                value="needs-revision"
-                checked={reviewStatus === "needs-revision"}
-                onChange={() => setReviewStatus("needs-revision")}
-                className="w-5 h-5 text-orange-600 focus:ring-orange-500 flex-shrink-0"
-              />
-              <span className="text-sm font-medium text-foreground">Need further revision</span>
-            </label>
           </div>
         </div>
 
@@ -159,20 +142,18 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
       </CardHeader>
 
       <CardContent>
-        {/* Get AI Help Button - Shows when "Need further revision" is selected */}
-        {reviewStatus === "needs-revision" && (
-          <div className="mb-4">
-            <Button
-              onClick={handleGetAiHelp}
-              variant="outline"
-              className={`w-full border-orange-500/50 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 ${isLoadingAi ? "animate-pulse border-orange-500 ring-1 ring-orange-500" : ""
-                }`}
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {showAiHelp ? "Hide AI Help" : "Get AI Help"}
-            </Button>
-          </div>
-        )}
+        {/* Get AI Help Button - Always visible */}
+        <div className="mb-4">
+          <Button
+            onClick={handleGetAiHelp}
+            variant="outline"
+            className={`w-full border-orange-500/50 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 ${isLoadingAi ? "animate-pulse border-orange-500 ring-1 ring-orange-500" : ""
+              }`}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {showAiHelp ? "Hide AI Help" : "Get AI Help"}
+          </Button>
+        </div>
 
         <Button
           variant="ghost"

@@ -25,6 +25,7 @@ import {
   updateCardSchema,
   deleteCardSchema,
   updateCardConfidenceSchema,
+  reviewCardSchema,
   type CreateDeckInput,
   type UpdateDeckInput,
   type DeleteDeckInput,
@@ -33,6 +34,7 @@ import {
   type UpdateCardInput,
   type DeleteCardInput,
   type UpdateCardConfidenceInput,
+  type ReviewCardInput,
 } from "./schemas";
 
 /**
@@ -385,6 +387,73 @@ export async function deleteCardAction(input: DeleteCardInput) {
     }
     console.error("Failed to delete card:", error);
     return { success: false, error: "Failed to delete card" };
+  }
+}
+
+/**
+ * Review a card and update its spaced repetition data
+ */
+export async function reviewCardAction(input: ReviewCardInput) {
+  try {
+    const validatedInput = reviewCardSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get the card to find its deckId and current SRS data
+    const { getCardById } = await import("@/db/queries/cards");
+    const card = await getCardById(validatedInput.cardId);
+
+    if (!card) {
+      return { success: false, error: "Card not found" };
+    }
+
+    // Verify user owns the deck that contains this card
+    const ownsDeck = await verifyDeckOwnership(card.deckId, userId);
+    if (!ownsDeck) {
+      return { success: false, error: "Access denied" };
+    }
+
+    // Calculate next review using SRS algorithm
+    const { calculateNextReview, getCurrentInterval } = await import("@/lib/srs-utils");
+
+    const currentInterval = getCurrentInterval(card.lastReviewedAt);
+    const { intervalDays, nextDueAt } = calculateNextReview(
+      currentInterval,
+      validatedInput.confidenceRating as 1 | 2 | 3
+    );
+
+    // Update card review data
+    const { updateCardReview } = await import("@/db/queries/cards");
+    const updatedCard = await updateCardReview({
+      cardId: validatedInput.cardId,
+      easeFactor: card.easeFactor || 2.5, // Keep existing ease factor for now
+      nextDueAt,
+    });
+
+    if (!updatedCard) {
+      return { success: false, error: "Failed to update card" };
+    }
+
+    revalidatePath(`/decks/${card.deckId}`);
+
+    return {
+      success: true,
+      card: updatedCard,
+      intervalDays, // Return for debugging/display purposes
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to review card:", error);
+    return { success: false, error: "Failed to review card" };
   }
 }
 

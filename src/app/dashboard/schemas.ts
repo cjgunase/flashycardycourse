@@ -116,3 +116,15 @@ export type DeleteCardInput = z.infer<typeof deleteCardSchema>;
 export type UpdateCardConfidenceInput = z.infer<typeof updateCardConfidenceSchema>;
 export type ReviewCardInput = z.infer<typeof reviewCardSchema>;
 
+/**
+ * Schema for generating a deck with AI
+ */
+export const generateAIDeckSchema = z.object({
+  content: z.string()
+    .min(10, "Content is too short to generate flashcards")
+    .max(100000, "Content must be less than 100KB"), // ~100KB limit
+});
+
+// Export TypeScript type
+export type GenerateAIDeckInput = z.infer<typeof generateAIDeckSchema>;
+

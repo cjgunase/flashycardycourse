@@ -26,6 +26,7 @@ import {
   deleteCardSchema,
   updateCardConfidenceSchema,
   reviewCardSchema,
+  generateAIDeckSchema,
   type CreateDeckInput,
   type UpdateDeckInput,
   type DeleteDeckInput,
@@ -35,6 +36,7 @@ import {
   type DeleteCardInput,
   type UpdateCardConfidenceInput,
   type ReviewCardInput,
+  type GenerateAIDeckInput,
 } from "./schemas";
 
 /**
@@ -454,6 +456,171 @@ export async function reviewCardAction(input: ReviewCardInput) {
     }
     console.error("Failed to review card:", error);
     return { success: false, error: "Failed to review card" };
+  }
+}
+
+/**
+ * Generate a deck with AI using OpenAI API
+ */
+export async function generateAIDeckAction(input: GenerateAIDeckInput) {
+  try {
+    // 1. Validate input with Zod
+    const validatedInput = generateAIDeckSchema.parse(input);
+
+    // 2. Authenticate user
+    const { userId, has } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // 3. Check if user has AI helper feature (Pro plan)
+    const hasAiHelper = await has({ feature: "ai_helper" });
+    if (!hasAiHelper) {
+      return {
+        success: false,
+        error: "AI deck generation is only available for Pro users. Upgrade to access this feature.",
+        requiresUpgrade: true,
+      };
+    }
+
+    // 4. Check deck limit for users without unlimited decks
+    const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+    if (!hasUnlimitedDecks) {
+      const { getUserDecks } = await import("@/db/queries/decks");
+      const existingDecks = await getUserDecks(userId);
+
+      if (existingDecks.length >= 3) {
+        return {
+          success: false,
+          error: "Free users can create up to 3 decks. Upgrade to Pro for unlimited decks.",
+          requiresUpgrade: true,
+        };
+      }
+    }
+
+    // 5. Call OpenAI API
+    const OpenAI = (await import("openai")).default;
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const systemPrompt = `You are an expert at creating flashcards for spaced repetition learning. Follow these principles from cognitive science research:
+
+# Core Principles
+- Spacing effect: Cards should encourage spaced repetition
+- Retrieval practice: Questions should require active recall
+- Desirable difficulties: Make prompts generative, not just recognition
+- Encoding variability: Use multiple perspectives
+- Interleaving: Mix different concepts
+- Elaboration & dual coding: Include explanations and visual/conceptual connections
+
+# Card Design Guidelines
+- Create atomic but non-trivial cards (one concept per card, but not overly simple)
+- Use generative prompts that require the learner to produce an answer
+- Include explanations or mnemonics in the answer when helpful
+- For complex topics, create chains of reasoning across multiple cards
+- Include relevant visual descriptions or conceptual connections
+
+# Response Format
+You MUST respond with a valid JSON object in this exact format:
+{
+  "title": "A descriptive title for the deck (max 100 characters)",
+  "description": "A brief description of what this deck covers (max 500 characters)",
+  "cards": [
+    {
+      "question": "The question or prompt",
+      "answer": "The answer, including explanations, mnemonics, or visual descriptions when helpful"
+    }
+  ]
+}
+
+Create 10-30 cards depending on the content complexity. Ensure variety in card types and difficulty.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { 
+          role: "user", 
+          content: `Create a flashcard deck from the following content:\n\n${validatedInput.content}` 
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const aiResponse = response.choices[0].message.content;
+    if (!aiResponse) {
+      return { success: false, error: "Failed to generate content from AI" };
+    }
+
+    // 6. Parse AI response
+    let deckData: {
+      title: string;
+      description?: string;
+      cards: Array<{ question: string; answer: string }>;
+    };
+
+    try {
+      deckData = JSON.parse(aiResponse);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", parseError);
+      return { success: false, error: "Failed to parse AI response" };
+    }
+
+    // 7. Validate the parsed data
+    if (!deckData.title || !deckData.cards || !Array.isArray(deckData.cards)) {
+      return { success: false, error: "AI response is missing required fields" };
+    }
+
+    if (deckData.cards.length === 0) {
+      return { success: false, error: "AI did not generate any cards" };
+    }
+
+    // 8. Create the deck
+    const newDeck = await createDeckQuery({
+      userId,
+      title: deckData.title.slice(0, 100), // Ensure max length
+      description: deckData.description?.slice(0, 500), // Ensure max length
+      confidenceLevel: 2, // Default medium confidence
+    });
+
+    // 9. Create all cards in the deck
+    const { createCard: createCardQuery } = await import("@/db/queries/cards");
+    
+    const createdCards = await Promise.all(
+      deckData.cards.map((card) =>
+        createCardQuery({
+          deckId: newDeck.id,
+          question: card.question,
+          answer: card.answer,
+          confidenceLevel: 2, // Default medium confidence
+        })
+      )
+    );
+
+    // 10. Revalidate affected paths
+    revalidatePath("/dashboard");
+    revalidatePath(`/decks/${newDeck.id}`);
+
+    return {
+      success: true,
+      deck: newDeck,
+      cardCount: createdCards.length,
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to generate AI deck:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to generate deck with AI" 
+    };
   }
 }
 

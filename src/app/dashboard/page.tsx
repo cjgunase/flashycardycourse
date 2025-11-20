@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserDecks } from "@/db/queries/decks";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateDeckDialog } from "./_components/create-deck-dialog";
+import { GenerateAIDeckDialog } from "./_components/generate-ai-deck-dialog";
 import { DeckCard } from "./_components/deck-card";
 
 export default async function DashboardPage() {
@@ -17,6 +18,7 @@ export default async function DashboardPage() {
 
   // Check if user has unlimited decks feature (Pro plan)
   const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
+  const hasAiHelper = await has({ feature: "ai_helper" });
   const deckLimit = hasUnlimitedDecks ? null : 3;
   const canCreateMoreDecks = hasUnlimitedDecks || decks.length < 3;
 
@@ -35,8 +37,14 @@ export default async function DashboardPage() {
                 {deckLimit && ` (${decks.length}/${deckLimit} used)`}
               </p>
             </div>
-            <div className="flex-shrink-0 w-full sm:w-auto">
-              <CreateDeckDialog 
+            <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+              <GenerateAIDeckDialog
+                hasAiHelper={hasAiHelper}
+                canCreateMoreDecks={canCreateMoreDecks}
+                currentDeckCount={decks.length}
+                deckLimit={deckLimit}
+              />
+              <CreateDeckDialog
                 canCreateMoreDecks={canCreateMoreDecks}
                 currentDeckCount={decks.length}
                 deckLimit={deckLimit}

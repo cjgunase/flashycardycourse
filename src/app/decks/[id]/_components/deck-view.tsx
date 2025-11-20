@@ -80,7 +80,7 @@ export function DeckView({ initialCards, deckId }: DeckViewProps) {
             </div>
 
             <p className="text-sm text-muted-foreground mt-4 text-center">
-                Use the slider to mark how you feel about the card. The card will be automatically marked as reviewed.
+                Select your proficiency level (Beginner, Intermediate, or Advanced) to mark the card as reviewed.
             </p>
 
             {/* Card list */}

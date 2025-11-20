@@ -16,7 +16,11 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import { User, Settings, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function Header() {
+interface HeaderProps {
+  isProUser?: boolean;
+}
+
+export function Header({ isProUser = false }: HeaderProps) {
   const { user, isSignedIn } = useUser();
   const { openSignIn, openSignUp, signOut } = useClerk();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,12 +52,14 @@ export function Header() {
               >
                 Dashboard
               </Link>
-              <Link
-                href="/pricing"
-                className="text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
-              >
-                Pricing
-              </Link>
+              {!isProUser && (
+                <Link
+                  href="/pricing"
+                  className="text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Pricing
+                </Link>
+              )}
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -145,13 +151,15 @@ export function Header() {
                 >
                   Dashboard
                 </Link>
-                <Link
-                  href="/pricing"
-                  className="block px-4 py-3 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Pricing
-                </Link>
+                {!isProUser && (
+                  <Link
+                    href="/pricing"
+                    className="block px-4 py-3 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Pricing
+                  </Link>
+                )}
                 <Link
                   href="/settings"
                   className="block px-4 py-3 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { dark } from "@clerk/themes";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -20,11 +21,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { has } = await auth();
+  const isProUser = await has({ plan: "pro" });
+
   return (
     <ClerkProvider
       appearance={{
@@ -39,7 +43,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Header />
+            <Header isProUser={isProUser} />
             <main className="pt-16">{children}</main>
           </ThemeProvider>
         </body>

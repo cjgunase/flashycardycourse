@@ -20,10 +20,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createCardAction } from "@/app/dashboard/actions";
 import type { CreateCardInput } from "@/app/dashboard/schemas";
 
-const CONFIDENCE_LEVELS = {
-  1: { label: "Less Confident", color: "text-orange-600 dark:text-orange-400" },
-  2: { label: "Medium", color: "text-blue-600 dark:text-blue-400" },
-  3: { label: "More Confident", color: "text-green-600 dark:text-green-400" },
+const PROFICIENCY_LEVELS = {
+  1: { label: "Beginner", color: "text-orange-600 dark:text-orange-400" },
+  2: { label: "Intermediate", color: "text-blue-600 dark:text-blue-400" },
+  3: { label: "Advanced", color: "text-green-600 dark:text-green-400" },
 };
 
 interface CreateCardDialogProps {
@@ -107,7 +107,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
     }
   }
 
-  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
+  const currentLevel = PROFICIENCY_LEVELS[confidenceLevel as keyof typeof PROFICIENCY_LEVELS];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -201,7 +201,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="confidence">Confidence Level</Label>
+              <Label htmlFor="confidence">Proficiency Level</Label>
               <div className="flex items-center gap-3">
                 <Slider
                   min={1}

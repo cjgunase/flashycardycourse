@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { EditCardDialog } from "./edit-card-dialog";
 import { DeleteCardDialog } from "./delete-card-dialog";
 import { updateCardConfidenceAction } from "@/app/dashboard/actions";
 import type { Card as CardType } from "@/db/queries/cards";
 
-const CONFIDENCE_LEVELS = {
-  1: { label: "Less Confident", color: "text-orange-600 dark:text-orange-400" },
-  2: { label: "Medium", color: "text-blue-600 dark:text-blue-400" },
-  3: { label: "More Confident", color: "text-green-600 dark:text-green-400" },
+const PROFICIENCY_LEVELS = {
+  1: { label: "Beginner", color: "text-orange-600 dark:text-orange-400" },
+  2: { label: "Intermediate", color: "text-blue-600 dark:text-blue-400" },
+  3: { label: "Advanced", color: "text-green-600 dark:text-green-400" },
 };
 
 interface CardItemProps {
@@ -94,7 +94,7 @@ export function CardItem({ card, deckId, cardNumber, onCardReviewed }: CardItemP
     }
   }
 
-  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
+  const currentLevel = PROFICIENCY_LEVELS[confidenceLevel as keyof typeof PROFICIENCY_LEVELS];
 
   return (
     <Card className="border-2 border-border bg-card hover:border-primary/50 transition-colors">
@@ -219,24 +219,50 @@ export function CardItem({ card, deckId, cardNumber, onCardReviewed }: CardItemP
           )}
         </div>
 
-        {/* Confidence slider */}
+        {/* Proficiency segmented control */}
         <div className="mt-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              Confidence:
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              Proficiency:
             </span>
-            <Slider
-              min={1}
-              max={3}
-              step={1}
-              value={[confidenceLevel]}
-              onValueChange={handleConfidenceChange}
-              disabled={isUpdatingConfidence}
-              className="max-w-32"
-            />
-            <span className={`text-xs font-semibold ${currentLevel.color} whitespace-nowrap`}>
-              {currentLevel.label}
-            </span>
+            <div className="grid grid-cols-3 gap-1 p-1 bg-muted rounded-lg">
+              <Button
+                variant={confidenceLevel === 1 ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleConfidenceChange([1])}
+                disabled={isUpdatingConfidence}
+                className={`text-xs h-9 ${confidenceLevel === 1
+                    ? "bg-orange-500 hover:bg-orange-600 text-white"
+                    : "hover:bg-orange-100 dark:hover:bg-orange-950 text-foreground"
+                  }`}
+              >
+                Beginner
+              </Button>
+              <Button
+                variant={confidenceLevel === 2 ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleConfidenceChange([2])}
+                disabled={isUpdatingConfidence}
+                className={`text-xs h-9 ${confidenceLevel === 2
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "hover:bg-blue-100 dark:hover:bg-blue-950 text-foreground"
+                  }`}
+              >
+                Intermediate
+              </Button>
+              <Button
+                variant={confidenceLevel === 3 ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleConfidenceChange([3])}
+                disabled={isUpdatingConfidence}
+                className={`text-xs h-9 ${confidenceLevel === 3
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "hover:bg-green-100 dark:hover:bg-green-950 text-foreground"
+                  }`}
+              >
+                Advanced
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

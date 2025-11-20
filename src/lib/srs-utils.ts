@@ -1,17 +1,17 @@
 import type { Card } from "@/db/queries/cards";
 
 /**
- * Confidence level type representing the three levels of confidence
+ * Proficiency level type representing the three levels of proficiency
  */
-export type ConfidenceLevel = 1 | 2 | 3;
+export type ProficiencyLevel = 1 | 2 | 3;
 
 /**
- * Confidence level labels and their corresponding weights for card selection
+ * Proficiency level labels and their corresponding weights for card selection
  */
-export const CONFIDENCE_CONFIG = {
-    1: { label: "Less Confident", weight: 6, difficultyMultiplier: 1.1 },
-    2: { label: "Medium", weight: 3, difficultyMultiplier: 1.3 },
-    3: { label: "More Confident", weight: 1, difficultyMultiplier: 1.8 },
+export const PROFICIENCY_CONFIG = {
+    1: { label: "Beginner", weight: 6, difficultyMultiplier: 1.1 },
+    2: { label: "Intermediate", weight: 3, difficultyMultiplier: 1.3 },
+    3: { label: "Advanced", weight: 1, difficultyMultiplier: 1.8 },
 } as const;
 
 /**
@@ -25,25 +25,25 @@ const BASE_GROWTH = 2.0;
 const MIN_INTERVAL_DAYS = 1;
 
 /**
- * Get the weight for a card based on its confidence level
- * Less confident cards get higher weights (appear more frequently)
+ * Get the weight for a card based on its proficiency level
+ * Beginner cards get higher weights (appear more frequently)
  */
-export function getConfidenceWeight(confidenceLevel: ConfidenceLevel): number {
-    return CONFIDENCE_CONFIG[confidenceLevel].weight;
+export function getProficiencyWeight(proficiencyLevel: ProficiencyLevel): number {
+    return PROFICIENCY_CONFIG[proficiencyLevel].weight;
 }
 
 /**
  * Calculate the next review date based on the SRS algorithm
  * 
  * @param currentInterval - Current interval in days (0 for new cards)
- * @param confidenceRating - User's confidence rating (1-3)
+ * @param proficiencyRating - User's proficiency rating (1-3)
  * @returns Object containing new interval (days) and next due date
  */
 export function calculateNextReview(
     currentInterval: number,
-    confidenceRating: ConfidenceLevel
+    proficiencyRating: ProficiencyLevel
 ): { intervalDays: number; nextDueAt: Date } {
-    const diffMultiplier = CONFIDENCE_CONFIG[confidenceRating].difficultyMultiplier;
+    const diffMultiplier = PROFICIENCY_CONFIG[proficiencyRating].difficultyMultiplier;
 
     // For first review, start with base interval
     const baseInterval = currentInterval === 0 ? 1 : currentInterval;
@@ -139,7 +139,7 @@ export function weightedRandomSelect<T>(
  * Get cards that are due for review and sort them by weighted random selection
  * 
  * @param cards - All cards in the deck
- * @returns Cards that are due, weighted by confidence level
+ * @returns Cards that are due, weighted by proficiency level
  */
 export function selectCardsForReview(cards: Card[]): Card[] {
     // Filter cards that are due (nextDueAt <= now or null)
@@ -151,9 +151,9 @@ export function selectCardsForReview(cards: Card[]): Card[] {
 
     if (dueCards.length === 0) return [];
 
-    // Get weights based on confidence levels
+    // Get weights based on proficiency levels
     const weights = dueCards.map(card =>
-        getConfidenceWeight((card.confidenceLevel || 2) as ConfidenceLevel)
+        getProficiencyWeight((card.confidenceLevel || 2) as ProficiencyLevel)
     );
 
     // Use weighted random selection to order all due cards

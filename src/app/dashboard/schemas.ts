@@ -6,7 +6,7 @@ import { z } from "zod";
 export const createDeckSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
-  confidenceLevel: z.number().min(1).max(3).default(2), // 1: Less confident, 2: Medium, 3: More confident
+  confidenceLevel: z.number().min(1).max(3).default(2), // 1: Beginner, 2: Intermediate, 3: Advanced
 });
 
 /**
@@ -41,7 +41,7 @@ export const createCardSchema = z.object({
   deckId: z.number().positive("Invalid deck ID"),
   question: z.string().min(1, "Question is required"),
   answer: z.string().min(1, "Answer is required"),
-  confidenceLevel: z.number().min(1).max(3).default(2), // 1: Less confident, 2: Medium, 3: More confident
+  confidenceLevel: z.number().min(1).max(3).default(2), // 1: Beginner, 2: Intermediate, 3: Advanced
   image: z.string().optional().refine(
     (val) => {
       if (!val) return true; // Optional field
@@ -102,7 +102,7 @@ export const updateCardConfidenceSchema = z.object({
  */
 export const reviewCardSchema = z.object({
   cardId: z.number().positive("Invalid card ID"),
-  confidenceRating: z.number().min(1).max(3, "Confidence rating must be 1 (Less Confident), 2 (Medium), or 3 (More Confident)"),
+  confidenceRating: z.number().min(1).max(3, "Confidence rating must be 1 (Beginner), 2 (Intermediate), or 3 (Advanced)"),
 });
 
 // Export TypeScript types from schemas

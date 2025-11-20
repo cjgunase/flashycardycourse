@@ -20,10 +20,10 @@ import { createDeckAction } from "../actions";
 import type { CreateDeckInput } from "../schemas";
 import Link from "next/link";
 
-const CONFIDENCE_LEVELS = {
-  1: { label: "Less Confident", description: "Need more practice with this topic", color: "text-orange-600" },
-  2: { label: "Medium", description: "Getting comfortable with this topic", color: "text-blue-600" },
-  3: { label: "More Confident", description: "Very familiar with this topic", color: "text-green-600" },
+const PROFICIENCY_LEVELS = {
+  1: { label: "Beginner", description: "Just starting to learn this topic", color: "text-orange-600" },
+  2: { label: "Intermediate", description: "Developing skills with this topic", color: "text-blue-600" },
+  3: { label: "Advanced", description: "Strong command of this topic", color: "text-green-600" },
 };
 
 interface CreateDeckDialogProps {
@@ -32,10 +32,10 @@ interface CreateDeckDialogProps {
   deckLimit: number | null;
 }
 
-export function CreateDeckDialog({ 
-  canCreateMoreDecks, 
-  currentDeckCount, 
-  deckLimit 
+export function CreateDeckDialog({
+  canCreateMoreDecks,
+  currentDeckCount,
+  deckLimit
 }: CreateDeckDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,13 +81,13 @@ export function CreateDeckDialog({
     }
   }
 
-  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
+  const currentLevel = PROFICIENCY_LEVELS[confidenceLevel as keyof typeof PROFICIENCY_LEVELS];
   const isAtLimit = !canCreateMoreDecks && deckLimit !== null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
+        <Button
           className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
           disabled={isAtLimit}
         >
@@ -108,7 +108,7 @@ export function CreateDeckDialog({
                 You&apos;ve reached the free plan limit of {deckLimit} decks.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="py-6 space-y-4">
               <div className="rounded-lg bg-primary/5 p-4 space-y-2">
                 <h3 className="font-semibold text-lg">Upgrade to Pro</h3>
@@ -160,86 +160,86 @@ export function CreateDeckDialog({
               </DialogDescription>
             </DialogHeader>
 
-          <div className="grid gap-6 py-6">
-            {/* Title Input */}
-            <div className="grid gap-2">
-              <Label htmlFor="title">
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="title"
-                name="title"
-                placeholder="e.g., Cardiology Finals Prep"
-                required
-                maxLength={100}
-                disabled={isSubmitting}
-              />
-            </div>
-
-            {/* Description Input */}
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                name="description"
-                placeholder="Add a brief description of this deck..."
-                maxLength={500}
-                disabled={isSubmitting}
-                className="resize-none"
-                rows={3}
-              />
-            </div>
-
-            {/* Confidence Level Slider */}
-            <div className="grid gap-4">
-              <Label htmlFor="confidence">
-                Confidence Level
-              </Label>
-              <div className="space-y-4">
-                <Slider
-                  id="confidence"
-                  min={1}
-                  max={3}
-                  step={1}
-                  value={[confidenceLevel]}
-                  onValueChange={(value) => setConfidenceLevel(value[0])}
+            <div className="grid gap-6 py-6">
+              {/* Title Input */}
+              <div className="grid gap-2">
+                <Label htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  name="title"
+                  placeholder="e.g., Cardiology Finals Prep"
+                  required
+                  maxLength={100}
                   disabled={isSubmitting}
-                  className="w-full"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Less Confident</span>
-                  <span>Medium</span>
-                  <span>More Confident</span>
-                </div>
-                <div className={`rounded-lg bg-muted p-3 text-center transition-colors ${currentLevel.color}`}>
-                  <p className="font-semibold">{currentLevel.label}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {currentLevel.description}
-                  </p>
-                </div>
               </div>
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 space-y-2">
-                <p className="text-sm text-destructive">{error}</p>
-                {requiresUpgrade && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    asChild
-                    className="w-full"
-                  >
-                    <Link href="/pricing">
-                      <Crown className="mr-2 h-4 w-4" />
-                      View Upgrade Options
-                    </Link>
-                  </Button>
-                )}
+              {/* Description Input */}
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  placeholder="Add a brief description of this deck..."
+                  maxLength={500}
+                  disabled={isSubmitting}
+                  className="resize-none"
+                  rows={3}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Confidence Level Slider */}
+              <div className="grid gap-4">
+                <Label htmlFor="confidence">
+                  Proficiency Level
+                </Label>
+                <div className="space-y-4">
+                  <Slider
+                    id="confidence"
+                    min={1}
+                    max={3}
+                    step={1}
+                    value={[confidenceLevel]}
+                    onValueChange={(value) => setConfidenceLevel(value[0])}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Beginner</span>
+                    <span>Intermediate</span>
+                    <span>Advanced</span>
+                  </div>
+                  <div className={`rounded-lg bg-muted p-3 text-center transition-colors ${currentLevel.color}`}>
+                    <p className="font-semibold">{currentLevel.label}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {currentLevel.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-lg bg-destructive/10 p-3 space-y-2">
+                  <p className="text-sm text-destructive">{error}</p>
+                  {requiresUpgrade && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      asChild
+                      className="w-full"
+                    >
+                      <Link href="/pricing">
+                        <Crown className="mr-2 h-4 w-4" />
+                        View Upgrade Options
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
             <DialogFooter>
               <Button

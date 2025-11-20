@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUser, useClerk } from "@clerk/nextjs";
-import { User } from "lucide-react";
+import { User, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
@@ -72,6 +72,12 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => signOut()}>
                     Sign Out
                   </DropdownMenuItem>

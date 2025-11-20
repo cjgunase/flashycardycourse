@@ -54,11 +54,11 @@ export function DeleteCardDialog({ cardId, deckId }: DeleteCardDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+        <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10">
           <Trash2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Delete Card</DialogTitle>
           <DialogDescription>
@@ -72,12 +72,13 @@ export function DeleteCardDialog({ cardId, deckId }: DeleteCardDialogProps) {
           </Alert>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => setOpen(false)}
             disabled={isDeleting}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -86,6 +87,7 @@ export function DeleteCardDialog({ cardId, deckId }: DeleteCardDialogProps) {
             variant="destructive"
             onClick={handleDelete}
             disabled={isDeleting}
+            className="w-full sm:w-auto"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </Button>

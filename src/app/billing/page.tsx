@@ -15,10 +15,10 @@ export default async function BillingPage() {
   const isProUser = await has({ plan: "pro" });
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Billing & Subscription</h1>
-        <p className="text-muted-foreground">
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Billing & Subscription</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Manage your subscription and billing information
         </p>
       </div>
@@ -119,7 +119,7 @@ export default async function BillingPage() {
       </Card>
 
       <div className="mt-6">
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild className="w-full sm:w-auto">
           <a href="/dashboard">Back to Dashboard</a>
         </Button>
       </div>

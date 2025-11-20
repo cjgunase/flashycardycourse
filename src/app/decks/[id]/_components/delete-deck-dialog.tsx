@@ -59,13 +59,14 @@ export function DeleteDeckDialog({ deckId, deckTitle }: DeleteDeckDialogProps) {
       <DialogTrigger asChild>
         <Button 
           variant="destructive" 
-          size="sm"
+          className="text-sm"
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          Delete Deck
+          <span className="hidden xs:inline">Delete Deck</span>
+          <span className="xs:hidden">Delete</span>
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Delete Deck</DialogTitle>
           <DialogDescription className="space-y-2">
@@ -84,12 +85,13 @@ export function DeleteDeckDialog({ deckId, deckTitle }: DeleteDeckDialogProps) {
           </Alert>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => setOpen(false)}
             disabled={isDeleting}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -98,6 +100,7 @@ export function DeleteDeckDialog({ deckId, deckTitle }: DeleteDeckDialogProps) {
             variant="destructive"
             onClick={handleDelete}
             disabled={isDeleting}
+            className="w-full sm:w-auto"
           >
             {isDeleting ? "Deleting..." : "Delete Deck"}
           </Button>

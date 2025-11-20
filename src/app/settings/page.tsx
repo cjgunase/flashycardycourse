@@ -19,21 +19,21 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Button
             asChild
             variant="ghost"
-            className="mb-4 text-muted-foreground hover:text-foreground"
+            className="mb-4 text-muted-foreground hover:text-foreground -ml-2"
           >
             <Link href="/dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Dashboard
             </Link>
           </Button>
-          <h1 className="text-4xl font-bold mb-2">Settings</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">Settings</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage your account, subscription, and preferences
           </p>
         </div>
@@ -121,7 +121,7 @@ export default async function SettingsPage() {
               {!isProUser && (
                 <div className="mt-6 pt-6 border-t">
                   <Button asChild className="w-full" size="lg">
-                    <Link href="/pricing">
+                    <Link href="/pricing" className="flex items-center justify-center">
                       <Sparkles className="mr-2 h-4 w-4" />
                       Upgrade to Pro
                     </Link>

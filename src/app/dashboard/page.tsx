@@ -22,23 +22,27 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground">My Decks</h1>
-            <p className="mt-2 text-lg text-muted-foreground">
-              {decks.length === 0
-                ? "Create your first flashcard deck to get started"
-                : `You have ${decks.length} ${decks.length === 1 ? "deck" : "decks"}`}
-              {deckLimit && ` (${decks.length}/${deckLimit} used)`}
-            </p>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground">My Decks</h1>
+              <p className="mt-2 text-base sm:text-lg text-muted-foreground">
+                {decks.length === 0
+                  ? "Create your first flashcard deck to get started"
+                  : `You have ${decks.length} ${decks.length === 1 ? "deck" : "decks"}`}
+                {deckLimit && ` (${decks.length}/${deckLimit} used)`}
+              </p>
+            </div>
+            <div className="flex-shrink-0 w-full sm:w-auto">
+              <CreateDeckDialog 
+                canCreateMoreDecks={canCreateMoreDecks}
+                currentDeckCount={decks.length}
+                deckLimit={deckLimit}
+              />
+            </div>
           </div>
-          <CreateDeckDialog 
-            canCreateMoreDecks={canCreateMoreDecks}
-            currentDeckCount={decks.length}
-            deckLimit={deckLimit}
-          />
         </div>
 
 
@@ -55,7 +59,7 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           // Render a grid of deck cards with confidence sliders
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {decks.map((deck) => (
               <DeckCard key={deck.id} deck={deck} />
             ))}

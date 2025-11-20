@@ -37,13 +37,13 @@ export default async function DeckDetailPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Button
             asChild
             variant="ghost"
-            className="mb-4 text-muted-foreground hover:text-foreground"
+            className="mb-4 text-muted-foreground hover:text-foreground -ml-2"
           >
             <Link href="/dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -51,13 +51,13 @@ export default async function DeckDetailPage({
             </Link>
           </Button>
 
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-foreground">
+          <div className="flex flex-col gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground break-words">
                 {deck.title}
               </h1>
               {deck.description && (
-                <p className="mt-2 text-lg text-muted-foreground">
+                <p className="mt-2 text-base sm:text-lg text-muted-foreground">
                   {deck.description}
                 </p>
               )}
@@ -67,10 +67,10 @@ export default async function DeckDetailPage({
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <DeleteDeckDialog deckId={deckId} deckTitle={deck.title} />
-              <DownloadDeckButton deckId={deckId} />
+            <div className="flex flex-wrap gap-2">
               <CreateCardDialog deckId={deckId} />
+              <DownloadDeckButton deckId={deckId} />
+              <DeleteDeckDialog deckId={deckId} deckTitle={deck.title} />
             </div>
           </div>
         </div>

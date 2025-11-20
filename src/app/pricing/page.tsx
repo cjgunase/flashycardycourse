@@ -9,14 +9,14 @@ export default async function PricingPage() {
   const isProUser = userId ? await has({ plan: "pro" }) : false;
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             Choose the plan that&apos;s right for you. Upgrade or downgrade at any
             time.
           </p>
@@ -26,8 +26,8 @@ export default async function PricingPage() {
         <PricingPlans isProUser={isProUser} />
 
         {/* FAQ Section */}
-        <div className="mt-16 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-8">
+        <div className="mt-12 sm:mt-16 max-w-3xl mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8">
             Frequently Asked Questions
           </h2>
           <div className="space-y-6">

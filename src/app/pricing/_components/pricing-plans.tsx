@@ -51,7 +51,7 @@ export function PricingPlans({ isProUser }: PricingPlansProps) {
   const isAuthenticated = !!userId;
 
   return (
-    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
       {/* Free Plan */}
       <Card className="relative flex flex-col">
         <CardHeader>
@@ -100,9 +100,9 @@ export function PricingPlans({ isProUser }: PricingPlansProps) {
       </Card>
 
       {/* Pro Plan */}
-      <Card className="relative flex flex-col border-primary shadow-lg">
-        <div className="absolute -top-4 left-0 right-0 flex justify-center">
-          <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+      <Card className="relative flex flex-col border-primary shadow-lg pt-6">
+        <div className="absolute -top-3 left-0 right-0 flex justify-center">
+          <span className="bg-primary text-primary-foreground px-3 sm:px-4 py-1 rounded-full text-xs sm:text-sm font-semibold">
             Most Popular
           </span>
         </div>

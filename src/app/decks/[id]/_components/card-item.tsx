@@ -54,19 +54,19 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
 
   return (
     <Card className="border-2 border-border bg-card hover:border-primary/50 transition-colors">
-      <CardHeader>
+      <CardHeader className="space-y-4">
         {/* Top Row: Card Number and Review Status */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {/* Card Number - Top Left */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full">
+            <span className="text-sm font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
               Card #{cardNumber}
             </span>
           </div>
 
-          {/* Review Status Radio Buttons - Top Right */}
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
+          {/* Review Status Radio Buttons - Stacks on mobile */}
+          <div className="flex flex-col xs:flex-row gap-3 xs:gap-4">
+            <label className="flex items-center gap-2 cursor-pointer min-h-[44px] xs:min-h-0">
               <input
                 type="radio"
                 name={`review-status-${card.id}`}
@@ -76,19 +76,19 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
                   setReviewStatus("done");
                   onMarkDone?.();
                 }}
-                className="w-4 h-4 text-green-600 focus:ring-green-500"
+                className="w-5 h-5 text-green-600 focus:ring-green-500 flex-shrink-0"
               />
               <span className="text-sm font-medium text-foreground">Done</span>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2 cursor-pointer min-h-[44px] xs:min-h-0">
               <input
                 type="radio"
                 name={`review-status-${card.id}`}
                 value="needs-revision"
                 checked={reviewStatus === "needs-revision"}
                 onChange={() => setReviewStatus("needs-revision")}
-                className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                className="w-5 h-5 text-orange-600 focus:ring-orange-500 flex-shrink-0"
               />
               <span className="text-sm font-medium text-foreground">Need further revision</span>
             </label>
@@ -96,20 +96,22 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
         </div>
 
         {/* Question Section */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded">
                 QUESTION
               </span>
             </div>
-            <p className="text-card-foreground whitespace-pre-wrap">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <EditCardDialog card={card} deckId={deckId} />
+              <DeleteCardDialog cardId={card.id} deckId={deckId} />
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="text-card-foreground whitespace-pre-wrap break-words">
               {card.question}
             </p>
-          </div>
-          <div className="flex items-center gap-1">
-            <EditCardDialog card={card} deckId={deckId} />
-            <DeleteCardDialog cardId={card.id} deckId={deckId} />
           </div>
         </div>
       </CardHeader>
@@ -150,7 +152,7 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
                 ANSWER
               </span>
             </div>
-            <p className="text-card-foreground whitespace-pre-wrap">
+            <p className="text-card-foreground whitespace-pre-wrap break-words">
               {card.answer}
             </p>
           </div>
@@ -187,7 +189,7 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2 text-xs text-muted-foreground">
           <span>Created {new Date(card.createdAt).toLocaleDateString()}</span>
           {card.reviewCount > 0 && (
             <span>Reviewed {card.reviewCount} times</span>

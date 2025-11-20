@@ -88,14 +88,14 @@ export function CreateDeckDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+          className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
           disabled={isAtLimit}
         >
           <Plus className="mr-2 h-4 w-4" />
           Create Deck
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
         {isAtLimit ? (
           // Show upgrade prompt when limit is reached
           <>

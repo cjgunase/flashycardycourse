@@ -50,10 +50,11 @@ export function DownloadDeckButton({ deckId }: DownloadDeckButtonProps) {
       onClick={handleDownload}
       disabled={isDownloading}
       variant="outline"
-      size="default"
+      className="text-sm"
     >
       <Download className="mr-2 h-4 w-4" />
-      {isDownloading ? "Generating..." : "Download as Markdown"}
+      <span className="hidden xs:inline">{isDownloading ? "Generating..." : "Download as Markdown"}</span>
+      <span className="xs:hidden">{isDownloading ? "..." : "Download"}</span>
     </Button>
   );
 }

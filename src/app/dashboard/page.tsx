@@ -14,7 +14,19 @@ export default async function DashboardPage() {
   }
 
   // Fetch user's decks using query function
-  const decks = await getUserDecks(userId);
+  let decks = await getUserDecks(userId);
+
+  // If user has no decks, create the example USMLE deck
+  if (decks.length === 0) {
+    const { createExampleDeck } = await import("@/db/queries/seed-example-deck");
+    const result = await createExampleDeck(userId);
+
+    if (result.success) {
+      // Refetch decks to include the newly created example deck
+      decks = await getUserDecks(userId);
+    }
+  }
+
 
   // Check if user has unlimited decks feature (Pro plan)
   const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });

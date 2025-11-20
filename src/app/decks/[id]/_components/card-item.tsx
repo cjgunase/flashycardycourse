@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { EditCardDialog } from "./edit-card-dialog";
 import { DeleteCardDialog } from "./delete-card-dialog";
+import { updateCardConfidenceAction } from "@/app/dashboard/actions";
 import type { Card as CardType } from "@/db/queries/cards";
+
+const CONFIDENCE_LEVELS = {
+  1: { label: "Less Confident", color: "text-orange-600 dark:text-orange-400" },
+  2: { label: "Medium", color: "text-blue-600 dark:text-blue-400" },
+  3: { label: "More Confident", color: "text-green-600 dark:text-green-400" },
+};
 
 interface CardItemProps {
   card: CardType;
@@ -21,6 +29,8 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
   const [showAiHelp, setShowAiHelp] = useState(false);
   const [aiHelpContent, setAiHelpContent] = useState<string | null>(card.aiHelp || null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [confidenceLevel, setConfidenceLevel] = useState(card.confidenceLevel || 2);
+  const [isUpdatingConfidence, setIsUpdatingConfidence] = useState(false);
 
   const handleGetAiHelp = async () => {
     const newShowAiHelp = !showAiHelp;
@@ -51,6 +61,27 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
       }
     }
   };
+
+  async function handleConfidenceChange(value: number[]) {
+    const newLevel = value[0];
+    setConfidenceLevel(newLevel);
+    setIsUpdatingConfidence(true);
+
+    try {
+      await updateCardConfidenceAction({
+        cardId: card.id,
+        confidenceLevel: newLevel,
+      });
+    } catch (error) {
+      console.error("Failed to update confidence level:", error);
+      // Revert on error
+      setConfidenceLevel(card.confidenceLevel || 2);
+    } finally {
+      setIsUpdatingConfidence(false);
+    }
+  }
+
+  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
 
   return (
     <Card className="border-2 border-border bg-card hover:border-primary/50 transition-colors">
@@ -205,6 +236,27 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
           {card.reviewCount > 0 && (
             <span>Reviewed {card.reviewCount} times</span>
           )}
+        </div>
+
+        {/* Confidence slider */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Confidence:
+            </span>
+            <Slider
+              min={1}
+              max={3}
+              step={1}
+              value={[confidenceLevel]}
+              onValueChange={handleConfidenceChange}
+              disabled={isUpdatingConfidence}
+              className="max-w-32"
+            />
+            <span className={`text-xs font-semibold ${currentLevel.color} whitespace-nowrap`}>
+              {currentLevel.label}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>

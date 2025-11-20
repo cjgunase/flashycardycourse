@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, X, Upload } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createCardAction } from "@/app/dashboard/actions";
 import type { CreateCardInput } from "@/app/dashboard/schemas";
 
+const CONFIDENCE_LEVELS = {
+  1: { label: "Less Confident", color: "text-orange-600 dark:text-orange-400" },
+  2: { label: "Medium", color: "text-blue-600 dark:text-blue-400" },
+  3: { label: "More Confident", color: "text-green-600 dark:text-green-400" },
+};
+
 interface CreateCardDialogProps {
   deckId: number;
   children?: React.ReactNode;
@@ -30,6 +37,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [confidenceLevel, setConfidenceLevel] = useState(2);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -76,6 +84,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
       deckId,
       question: formData.get("question") as string,
       answer: formData.get("answer") as string,
+      confidenceLevel: confidenceLevel,
       image: imageBase64 || undefined,
     };
 
@@ -86,6 +95,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
         setOpen(false);
         form.reset(); // Use the stored reference
         clearImage();
+        setConfidenceLevel(2); // Reset to default
       } else {
         setError(result.error || "Failed to create card");
       }
@@ -96,6 +106,8 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
       setIsSubmitting(false);
     }
   }
+
+  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -185,6 +197,24 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="confidence">Confidence Level</Label>
+              <div className="flex items-center gap-3">
+                <Slider
+                  min={1}
+                  max={3}
+                  step={1}
+                  value={[confidenceLevel]}
+                  onValueChange={(value) => setConfidenceLevel(value[0])}
+                  disabled={isSubmitting}
+                  className="max-w-32"
+                />
+                <span className={`text-xs font-semibold ${currentLevel.color} whitespace-nowrap`}>
+                  {currentLevel.label}
+                </span>
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
   createCard as createCardQuery,
   updateCard as updateCardQuery,
   deleteCard as deleteCardQuery,
+  updateCardConfidence as updateCardConfidenceQuery,
   verifyDeckOwnership,
 } from "@/db/queries/cards";
 import {
@@ -23,6 +24,7 @@ import {
   createCardSchema,
   updateCardSchema,
   deleteCardSchema,
+  updateCardConfidenceSchema,
   type CreateDeckInput,
   type UpdateDeckInput,
   type DeleteDeckInput,
@@ -30,6 +32,7 @@ import {
   type CreateCardInput,
   type UpdateCardInput,
   type DeleteCardInput,
+  type UpdateCardConfidenceInput,
 } from "./schemas";
 
 /**
@@ -223,6 +226,7 @@ export async function createCardAction(input: CreateCardInput) {
       deckId: validatedInput.deckId,
       question: validatedInput.question,
       answer: validatedInput.answer,
+      confidenceLevel: validatedInput.confidenceLevel,
       image: validatedInput.image,
     });
 
@@ -265,6 +269,7 @@ export async function updateCardAction(input: UpdateCardInput) {
       deckId: validatedInput.deckId,
       question: validatedInput.question,
       answer: validatedInput.answer,
+      confidenceLevel: validatedInput.confidenceLevel,
       image: validatedInput.image,
     });
 
@@ -285,6 +290,58 @@ export async function updateCardAction(input: UpdateCardInput) {
     }
     console.error("Failed to update card:", error);
     return { success: false, error: "Failed to update card" };
+  }
+}
+
+/**
+ * Update card confidence level only
+ */
+export async function updateCardConfidenceAction(input: UpdateCardConfidenceInput) {
+  try {
+    const validatedInput = updateCardConfidenceSchema.parse(input);
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // We need to verify ownership, but we only have cardId
+    // We'll need to get the card first to find its deckId
+    const { getCardById } = await import("@/db/queries/cards");
+    const card = await getCardById(validatedInput.cardId);
+
+    if (!card) {
+      return { success: false, error: "Card not found" };
+    }
+
+    // Verify user owns the deck that contains this card
+    const ownsDeck = await verifyDeckOwnership(card.deckId, userId);
+    if (!ownsDeck) {
+      return { success: false, error: "Access denied" };
+    }
+
+    const updatedCard = await updateCardConfidenceQuery({
+      cardId: validatedInput.cardId,
+      confidenceLevel: validatedInput.confidenceLevel,
+    });
+
+    if (!updatedCard) {
+      return { success: false, error: "Card not found" };
+    }
+
+    revalidatePath(`/decks/${card.deckId}`);
+
+    return { success: true, card: updatedCard };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: error.flatten().fieldErrors,
+      };
+    }
+    console.error("Failed to update card confidence:", error);
+    return { success: false, error: "Failed to update card confidence" };
   }
 }
 

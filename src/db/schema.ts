@@ -20,6 +20,7 @@ export const cardsTable = pgTable("cards", {
     .references(() => decksTable.id, { onDelete: "cascade" }),
   question: text().notNull(),
   answer: text().notNull(),
+  confidenceLevel: integer("confidence_level").default(2).notNull(), // 1: Less confident, 2: Medium, 3: More confident
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   // Spaced repetition fields

@@ -41,6 +41,7 @@ export const createCardSchema = z.object({
   deckId: z.number().positive("Invalid deck ID"),
   question: z.string().min(1, "Question is required"),
   answer: z.string().min(1, "Answer is required"),
+  confidenceLevel: z.number().min(1).max(3).default(2), // 1: Less confident, 2: Medium, 3: More confident
   image: z.string().optional().refine(
     (val) => {
       if (!val) return true; // Optional field
@@ -64,6 +65,7 @@ export const updateCardSchema = z.object({
   deckId: z.number().positive("Invalid deck ID"),
   question: z.string().min(1, "Question is required"),
   answer: z.string().min(1, "Answer is required"),
+  confidenceLevel: z.number().min(1).max(3).optional(),
   image: z.string().optional().refine(
     (val) => {
       if (!val) return true; // Optional field
@@ -88,6 +90,14 @@ export const deleteCardSchema = z.object({
 });
 
 /**
+ * Schema for updating card confidence level only
+ */
+export const updateCardConfidenceSchema = z.object({
+  cardId: z.number().positive("Invalid card ID"),
+  confidenceLevel: z.number().min(1).max(3),
+});
+
+/**
  * Schema for reviewing a card (spaced repetition)
  */
 export const reviewCardSchema = z.object({
@@ -103,5 +113,6 @@ export type UpdateDeckConfidenceInput = z.infer<typeof updateDeckConfidenceSchem
 export type CreateCardInput = z.infer<typeof createCardSchema>;
 export type UpdateCardInput = z.infer<typeof updateCardSchema>;
 export type DeleteCardInput = z.infer<typeof deleteCardSchema>;
+export type UpdateCardConfidenceInput = z.infer<typeof updateCardConfidenceSchema>;
 export type ReviewCardInput = z.infer<typeof reviewCardSchema>;
 

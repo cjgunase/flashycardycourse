@@ -48,6 +48,7 @@ export async function createCard(data: {
   deckId: number;
   question: string;
   answer: string;
+  confidenceLevel?: number;
   image?: string;
 }): Promise<Card> {
   const [newCard] = await db
@@ -56,6 +57,7 @@ export async function createCard(data: {
       deckId: data.deckId,
       question: data.question,
       answer: data.answer,
+      confidenceLevel: data.confidenceLevel ?? 2,
       image: data.image,
     })
     .returning();
@@ -71,6 +73,7 @@ export async function updateCard(data: {
   deckId: number;
   question: string;
   answer: string;
+  confidenceLevel?: number;
   image?: string;
 }): Promise<Card | null> {
   const [updatedCard] = await db
@@ -78,6 +81,7 @@ export async function updateCard(data: {
     .set({
       question: data.question,
       answer: data.answer,
+      ...(data.confidenceLevel !== undefined && { confidenceLevel: data.confidenceLevel }),
       image: data.image,
       updatedAt: new Date(),
     })
@@ -106,6 +110,25 @@ export async function deleteCard(
     );
 
   return result.rowCount > 0;
+}
+
+/**
+ * Update a card's confidence level only
+ */
+export async function updateCardConfidence(data: {
+  cardId: number;
+  confidenceLevel: number;
+}): Promise<Card | null> {
+  const [updatedCard] = await db
+    .update(cardsTable)
+    .set({
+      confidenceLevel: data.confidenceLevel,
+      updatedAt: new Date(),
+    })
+    .where(eq(cardsTable.id, data.cardId))
+    .returning();
+
+  return updatedCard || null;
 }
 
 /**

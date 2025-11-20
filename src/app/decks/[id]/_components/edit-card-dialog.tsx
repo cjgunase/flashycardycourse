@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, X } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,12 @@ import { updateCardAction } from "@/app/dashboard/actions";
 import type { UpdateCardInput } from "@/app/dashboard/schemas";
 import type { Card } from "@/db/queries/cards";
 
+const CONFIDENCE_LEVELS = {
+  1: { label: "Less Confident", color: "text-orange-600 dark:text-orange-400" },
+  2: { label: "Medium", color: "text-blue-600 dark:text-blue-400" },
+  3: { label: "More Confident", color: "text-green-600 dark:text-green-400" },
+};
+
 interface EditCardDialogProps {
   card: Card;
   deckId: number;
@@ -31,6 +38,7 @@ export function EditCardDialog({ card, deckId }: EditCardDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(card.image || null);
   const [imageBase64, setImageBase64] = useState<string | null>(card.image || null);
+  const [confidenceLevel, setConfidenceLevel] = useState(card.confidenceLevel || 2);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -77,6 +85,7 @@ export function EditCardDialog({ card, deckId }: EditCardDialogProps) {
       deckId,
       question: formData.get("question") as string,
       answer: formData.get("answer") as string,
+      confidenceLevel: confidenceLevel,
       image: imageBase64 || undefined,
     };
 
@@ -95,6 +104,8 @@ export function EditCardDialog({ card, deckId }: EditCardDialogProps) {
       setIsSubmitting(false);
     }
   }
+
+  const currentLevel = CONFIDENCE_LEVELS[confidenceLevel as keyof typeof CONFIDENCE_LEVELS];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -183,6 +194,24 @@ export function EditCardDialog({ card, deckId }: EditCardDialogProps) {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="confidence">Confidence Level</Label>
+              <div className="flex items-center gap-3">
+                <Slider
+                  min={1}
+                  max={3}
+                  step={1}
+                  value={[confidenceLevel]}
+                  onValueChange={(value) => setConfidenceLevel(value[0])}
+                  disabled={isSubmitting}
+                  className="max-w-32"
+                />
+                <span className={`text-xs font-semibold ${currentLevel.color} whitespace-nowrap`}>
+                  {currentLevel.label}
+                </span>
               </div>
             </div>
           </div>

@@ -48,6 +48,7 @@ export async function createCard(data: {
   deckId: number;
   question: string;
   answer: string;
+  image?: string;
 }): Promise<Card> {
   const [newCard] = await db
     .insert(cardsTable)
@@ -55,6 +56,7 @@ export async function createCard(data: {
       deckId: data.deckId,
       question: data.question,
       answer: data.answer,
+      image: data.image,
     })
     .returning();
 
@@ -69,12 +71,14 @@ export async function updateCard(data: {
   deckId: number;
   question: string;
   answer: string;
+  image?: string;
 }): Promise<Card | null> {
   const [updatedCard] = await db
     .update(cardsTable)
     .set({
       question: data.question,
       answer: data.answer,
+      image: data.image,
       updatedAt: new Date(),
     })
     .where(

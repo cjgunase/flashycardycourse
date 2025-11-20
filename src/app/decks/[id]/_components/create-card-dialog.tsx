@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X, Upload } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,41 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      setError("Please select a JPEG or PNG image file");
+      return;
+    }
+
+    // Validate file size (2.5MB)
+    if (file.size > 2.5 * 1024 * 1024) {
+      setError("Image must be smaller than 2.5MB");
+      return;
+    }
+
+    setError(null);
+
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setImagePreview(result);
+      setImageBase64(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    setImagePreview(null);
+    setImageBase64(null);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,6 +76,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
       deckId,
       question: formData.get("question") as string,
       answer: formData.get("answer") as string,
+      image: imageBase64 || undefined,
     };
 
     try {
@@ -49,6 +85,7 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
       if (result.success) {
         setOpen(false);
         form.reset(); // Use the stored reference
+        clearImage();
       } else {
         setError(result.error || "Failed to create card");
       }
@@ -108,6 +145,47 @@ export function CreateCardDialog({ deckId, children }: CreateCardDialogProps) {
                 rows={5}
                 disabled={isSubmitting}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="image">Image (Optional)</Label>
+              <div className="space-y-2">
+                {!imagePreview ? (
+                  <div className="relative">
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={handleImageChange}
+                      disabled={isSubmitting}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Upload a JPEG or PNG image (max 2.5MB)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative w-full border rounded-lg overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-auto max-h-48 object-contain"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8"
+                        onClick={clearImage}
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

@@ -28,6 +28,7 @@ export const cardsTable = pgTable("cards", {
   easeFactor: real("ease_factor").default(2.5), // SM-2 algorithm default
   reviewCount: integer("review_count").default(0).notNull(),
   aiHelp: text("ai_help"),
+  image: text(), // Base64-encoded JPEG or PNG image data
 });
 
 // Define relations

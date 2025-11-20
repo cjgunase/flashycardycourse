@@ -41,6 +41,19 @@ export const createCardSchema = z.object({
   deckId: z.number().positive("Invalid deck ID"),
   question: z.string().min(1, "Question is required"),
   answer: z.string().min(1, "Answer is required"),
+  image: z.string().optional().refine(
+    (val) => {
+      if (!val) return true; // Optional field
+      // Check base64 JPEG or PNG format
+      const isJpeg = val.startsWith("data:image/jpeg;base64,");
+      const isPng = val.startsWith("data:image/png;base64,");
+      if (!isJpeg && !isPng) return false;
+      // Rough size check: base64 increases size by ~33%, so 2.5MB * 1.33 ≈ 3.33MB
+      // Base64 string length for 2.5MB file ≈ 3,400,000 characters
+      return val.length <= 3500000;
+    },
+    { message: "Image must be a JPEG or PNG file under 2.5MB" }
+  ),
 });
 
 /**
@@ -51,6 +64,19 @@ export const updateCardSchema = z.object({
   deckId: z.number().positive("Invalid deck ID"),
   question: z.string().min(1, "Question is required"),
   answer: z.string().min(1, "Answer is required"),
+  image: z.string().optional().refine(
+    (val) => {
+      if (!val) return true; // Optional field
+      // Check base64 JPEG or PNG format
+      const isJpeg = val.startsWith("data:image/jpeg;base64,");
+      const isPng = val.startsWith("data:image/png;base64,");
+      if (!isJpeg && !isPng) return false;
+      // Rough size check: base64 increases size by ~33%, so 2.5MB * 1.33 ≈ 3.33MB
+      // Base64 string length for 2.5MB file ≈ 3,400,000 characters
+      return val.length <= 3500000;
+    },
+    { message: "Image must be a JPEG or PNG file under 2.5MB" }
+  ),
 });
 
 /**

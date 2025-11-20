@@ -113,6 +113,17 @@ export function CardItem({ card, deckId, cardNumber, onMarkDone }: CardItemProps
               {card.question}
             </p>
           </div>
+
+          {/* Display image if present */}
+          {card.image && (
+            <div className="mt-4 flex justify-center">
+              <img
+                src={card.image}
+                alt="Card image"
+                className="max-w-full max-h-96 rounded-lg border border-border object-contain"
+              />
+            </div>
+          )}
         </div>
       </CardHeader>
 

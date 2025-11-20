@@ -48,12 +48,12 @@ export async function createDeckAction(input: CreateDeckInput) {
 
     // 3. Check if user has unlimited decks feature
     const hasUnlimitedDecks = await has({ feature: "unlimited_decks" });
-    
+
     if (!hasUnlimitedDecks) {
       // Free user - check deck count
       const { getUserDecks } = await import("@/db/queries/decks");
       const existingDecks = await getUserDecks(userId);
-      
+
       if (existingDecks.length >= 3) {
         return {
           success: false,
@@ -223,6 +223,7 @@ export async function createCardAction(input: CreateCardInput) {
       deckId: validatedInput.deckId,
       question: validatedInput.question,
       answer: validatedInput.answer,
+      image: validatedInput.image,
     });
 
     revalidatePath(`/decks/${validatedInput.deckId}`);
@@ -264,6 +265,7 @@ export async function updateCardAction(input: UpdateCardInput) {
       deckId: validatedInput.deckId,
       question: validatedInput.question,
       answer: validatedInput.answer,
+      image: validatedInput.image,
     });
 
     if (!updatedCard) {
